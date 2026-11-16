@@ -275,7 +275,7 @@ function commitStudentExcel(){
   });
   pendingExcelStudents=[];$("studentExcelPreview").innerHTML=`<div class="preview-summary">Đã nhập thành công <b>${added}</b> học sinh.</div>`;persist();$("classFilter").value="all";renderStudents();toast(`Đã nhập ${added} học sinh từ Excel`);
 }
-$("downloadStudentTemplate").addEventListener("click",downloadStudentTemplate);
+
 $("studentExcelFile").addEventListener("change",e=>{const file=e.target.files?.[0];if(file)parseStudentExcel(file)});
 
 function setProfileForm(s){
