@@ -2,12 +2,13 @@
 <html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#14233d"><title>Smart Class Quick</title><link rel="stylesheet" href="style.css"></head>
 <body>
 <header class="top"><div class="brand"><span class="logo">S</span><div><b>Smart Class</b><small id="classLabel">Lớp học của tôi</small></div></div><button class="save-chip" id="saveStatus">● Đã lưu</button></header>
-<section class="school-panel" aria-label="Thông tin năm học và trường">
-  <div class="school-panel-title"><span>THÔNG TIN ĐƠN VỊ</span><small>Thông tin hiển thị trên báo cáo</small></div>
-  <div class="school-fields">
-    <label>Trường<input id="schoolName" class="big-input" placeholder="Nhập tên trường"></label>
-    <label>Năm học<input id="schoolYear" class="big-input" placeholder="2026-2027"></label>
+<section class="school-panel" aria-label="Chọn trường và năm học">
+  <div class="school-panel-title"><span>ĐƠN VỊ ĐANG QUẢN LÝ</span><small>Dữ liệu học sinh được phân tách theo trường và năm học</small></div>
+  <div class="school-fields school-select-fields">
+    <label>Chọn trường<select id="activeSchool" class="big-select"></select></label>
+    <label>Chọn năm học<select id="activeSchoolYear" class="big-select"></select></label>
   </div>
+  <button class="plain-btn school-manage-btn" id="manageSchools">⚙ Quản lý danh sách trường và năm học</button>
 </section>
 <section class="cloud-auth" id="cloudAuth">
   <div class="cloud-auth-head"><b>Đồng bộ nhiều thiết bị</b><span id="cloudState">Chưa đăng nhập</span></div>
@@ -125,6 +126,15 @@
   <label class="field-label">Ghi chú hồ sơ</label><textarea id="studentNotes" class="big-input profile-textarea" placeholder="Thông tin bổ sung..."></textarea>
 </div>
 <div class="modal-actions"><button class="plain-btn" id="cancelStudent">Hủy</button><button class="submit-btn" id="saveStudent">LƯU HỌC SINH</button></div></div></div>
+<div class="modal hidden" id="schoolModal"><div class="modal-card"><div class="modal-head"><b>Quản lý trường và năm học</b><button id="closeSchoolModal">×</button></div>
+  <label class="field-label">Tên trường mới</label><input id="newSchoolName" class="big-input" placeholder="Ví dụ: Trường THCS ...">
+  <label class="field-label">Năm học đầu tiên</label><input id="newSchoolYear" class="big-input" placeholder="2026-2027" value="2026-2027">
+  <button class="submit-btn" id="addSchool">＋ THÊM TRƯỜNG</button>
+  <div class="divider-line"></div>
+  <label class="field-label">Trường đang chọn</label><div id="schoolManageList" class="class-list"></div>
+  <label class="field-label">Thêm năm học cho trường đang chọn</label><div class="class-create-row"><input id="appendSchoolYear" class="big-input" placeholder="2027-2028"><button class="add-student-short" id="addSchoolYear">＋ Thêm năm</button></div>
+  <p class="modal-note">Mỗi trường có danh sách năm học riêng. Học sinh được lưu theo đúng trường và năm học đang chọn; chuyển trường hoặc năm học sẽ không làm mất dữ liệu cũ.</p>
+</div></div>
 <div class="modal hidden" id="classModal"><div class="modal-card"><div class="modal-head"><b>Quản lý lớp</b><button id="closeClassModal">×</button></div>
 <label class="field-label">Tên lớp mới</label><div class="class-create-row"><input id="classNameInput" class="big-input" placeholder="VD: 7A1"><button class="add-student-short" id="addClass">＋ Tạo lớp</button></div>
 <div class="field-label">Danh sách lớp</div><div id="classList" class="class-list"></div>

@@ -1,11 +1,26 @@
 const KEY="smartclass_quick_teacher_v1";
-let db={schoolName:"",schoolYear:"2026-2027",classes:[{id:"class_default",name:"Lớp học của tôi"}],activeClassId:"class_default",students:[],grades:[],behaviors:[]};
+let db={schoolName:"",schoolYear:"2026-2027",schools:[],activeSchoolId:"",activeSchoolYearId:"",classes:[{id:"class_default",name:"Lớp học của tôi"}],activeClassId:"class_default",students:[],grades:[],behaviors:[]};
 let selectedType="Khen",selectedScore=null,editingStudentId=null;
 const $=id=>document.getElementById(id),today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")},uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function ensureSchema(){
   db.schoolName=typeof db.schoolName==="string"?db.schoolName:"";
   db.schoolYear=typeof db.schoolYear==="string"&&db.schoolYear?db.schoolYear:"2026-2027";
+  if(!Array.isArray(db.schools)||!db.schools.length){
+    const schoolId=uid(),yearId=uid();
+    db.schools=[{id:schoolId,name:db.schoolName||"Trường của tôi",years:[{id:yearId,label:db.schoolYear}]}];
+    db.activeSchoolId=schoolId;db.activeSchoolYearId=yearId;
+  }
+  db.schools=db.schools.map(s=>{
+    const years=Array.isArray(s.years)?s.years:[];
+    return {id:s.id||uid(),name:s.name||"Trường chưa đặt tên",years:years.map(y=>({id:y.id||uid(),label:y.label||y.name||"2026-2027"}))};
+  });
+  db.schools.forEach(s=>{if(!s.years.length)s.years.push({id:uid(),label:"2026-2027"})});
+  if(!db.activeSchoolId||!db.schools.some(s=>s.id===db.activeSchoolId))db.activeSchoolId=db.schools[0].id;
+  const activeSchool=db.schools.find(s=>s.id===db.activeSchoolId)||db.schools[0];
+  if(!db.activeSchoolYearId||!activeSchool.years.some(y=>y.id===db.activeSchoolYearId))db.activeSchoolYearId=activeSchool.years[0].id;
+  const activeYear=activeSchool.years.find(y=>y.id===db.activeSchoolYearId)||activeSchool.years[0];
+  db.schoolName=activeSchool.name;db.schoolYear=activeYear.label;
   if(!Array.isArray(db.classes)||!db.classes.length){
     const oldName=db.className||"Lớp học của tôi";
     db.classes=[{id:"class_default",name:oldName}];
@@ -13,32 +28,46 @@ function ensureSchema(){
   db.classes=db.classes.map(c=>({id:c.id||uid(),name:c.name||"Lớp chưa đặt tên"}));
   if(!db.activeClassId||!db.classes.some(c=>c.id===db.activeClassId))db.activeClassId=db.classes[0].id;
   db.students=Array.isArray(db.students)?db.students:[];
-  db.students.forEach(s=>{s.profile=s.profile&&typeof s.profile==="object"?s.profile:{};});
+  db.students.forEach(s=>{
+    s.profile=s.profile&&typeof s.profile==="object"?s.profile:{};
+    if(!s.schoolId)s.schoolId=db.activeSchoolId;
+    if(!s.schoolYearId)s.schoolYearId=db.activeSchoolYearId;
+    if(!s.classId)s.classId=db.classes[0].id;
+  });
   db.grades=Array.isArray(db.grades)?db.grades:[];
   db.behaviors=Array.isArray(db.behaviors)?db.behaviors:[];
-  // Migrate all existing students and records into the first class.
-  db.students.forEach(s=>{if(!s.classId)s.classId=db.classes[0].id});
 }
+function currentSchool(){return db.schools.find(s=>s.id===db.activeSchoolId)||db.schools[0]}
+function currentSchoolYear(){return currentSchool().years.find(y=>y.id===db.activeSchoolYearId)||currentSchool().years[0]}
+function syncSchoolAliases(){db.schoolName=currentSchool().name;db.schoolYear=currentSchoolYear().label}
 function currentClass(){return db.classes.find(c=>c.id===db.activeClassId)||db.classes[0]}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(db));$("saveStatus").textContent="● Đã lưu";if(window.smartClassCloudSave)window.smartClassCloudSave(db)}catch(e){$("saveStatus").textContent="! Lỗi lưu";toast("Không lưu được. Hãy xuất TXT.")}renderAll()}
 function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),1900)}
-function load(){try{const saved=JSON.parse(localStorage.getItem(KEY));if(saved)db=saved}catch(e){}ensureSchema();$("schoolName").value=db.schoolName;$("schoolYear").value=db.schoolYear;$("classLabel").textContent=[db.schoolName,currentClass().name,db.schoolYear].filter(Boolean).join(" · ");renderAll()}
-window.smartClassApplyCloudData=function(remote){if(!remote||typeof remote!=="object")return;db=remote;ensureSchema();$("schoolName").value=db.schoolName;$("schoolYear").value=db.schoolYear;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}$("saveStatus").textContent="● Đã đồng bộ";renderAll()};
+function load(){try{const saved=JSON.parse(localStorage.getItem(KEY));if(saved)db=saved}catch(e){}ensureSchema();syncSchoolAliases();$("classLabel").textContent=[db.schoolName,currentClass().name,db.schoolYear].filter(Boolean).join(" · ");renderAll()}
+window.smartClassApplyCloudData=function(remote){if(!remote||typeof remote!=="object")return;db=remote;ensureSchema();syncSchoolAliases();try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}$("saveStatus").textContent="● Đã đồng bộ";renderAll()};
 window.smartClassGetLocalData=function(){return db};
 function nameOf(id){return db.students.find(s=>s.id===id)?.name||"Đã xóa học sinh"}
 function initials(n){return (n||"?").trim().split(/\s+/).slice(-2).map(x=>x[0]).join("").toUpperCase()}
 function switchScreen(screen){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id==="screen-"+screen));document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.dataset.screen===screen));window.scrollTo({top:0,behavior:"smooth"})}
 document.querySelector(".bottom-nav").addEventListener("click",e=>{let b=e.target.closest("[data-screen]");if(b)switchScreen(b.dataset.screen)});
-function classStudents(){return db.students.filter(s=>s.classId===db.activeClassId)}
+function schoolStudents(){return db.students.filter(s=>s.schoolId===db.activeSchoolId&&s.schoolYearId===db.activeSchoolYearId)}
+function classStudents(){return schoolStudents().filter(s=>s.classId===db.activeClassId)}
 function fillSelects(){
   const students=classStudents();
+  const schoolSelect=$("activeSchool"),yearSelect=$("activeSchoolYear");
+  schoolSelect.innerHTML=db.schools.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
+  schoolSelect.value=db.activeSchoolId;
+  const selectedSchool=currentSchool();
+  yearSelect.innerHTML=selectedSchool.years.map(y=>`<option value="${esc(y.id)}">${esc(y.label)}</option>`).join("");
+  yearSelect.value=db.activeSchoolYearId;
+  syncSchoolAliases();
   let opts=students.map(s=>`<option value="${s.id}">${esc(s.code)} · ${esc(s.name)}</option>`).join("")||'<option value="">Lớp này chưa có học sinh</option>';
   $("behaviorStudent").innerHTML=$("gradeStudent").innerHTML=opts;
   $("classFilter").innerHTML='<option value="all">Tất cả lớp</option>'+db.classes.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
   $("classFilter").value=db.activeClassId;
   $("classLabel").textContent=[db.schoolName,currentClass().name,db.schoolYear].filter(Boolean).join(" · ");
 }
-function renderAll(){fillSelects();renderStudents();renderBehaviorFeed();renderGradeFeed();renderClassList();renderStats();renderRanking();renderProgress();$("behaviorTodayCount").textContent=db.behaviors.filter(x=>x.date===today()).length+" hôm nay";$("gradeTodayCount").textContent=db.grades.filter(x=>x.date===today()).length+" điểm hôm nay"}
+function renderAll(){fillSelects();renderStudents();renderBehaviorFeed();renderGradeFeed();renderClassList();renderStats();renderRanking();renderProgress();$("behaviorTodayCount").textContent=db.behaviors.filter(x=>x.date===today()&&schoolStudents().some(s=>s.id===x.studentId)).length+" hôm nay";$("gradeTodayCount").textContent=db.grades.filter(x=>x.date===today()&&schoolStudents().some(s=>s.id===x.studentId)).length+" điểm hôm nay"}
 
 function parseISODate(value){if(!value)return null;const p=value.split("-").map(Number);if(p.length!==3||!p.every(Number.isFinite))return null;return new Date(p[0],p[1]-1,p[2])}
 function isoLocal(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")}
@@ -58,7 +87,8 @@ function renderStats(){
   const period=$("statsPeriod")?.value||"year", bounds=periodBounds(period);
   const students=classStudents();
   const inRange=x=>x.date&&x.date>=bounds.from&&x.date<=bounds.to;
-  const behaviors=db.behaviors.filter(inRange), grades=db.grades.filter(inRange);
+  const activeIds=new Set(students.map(s=>s.id));
+  const behaviors=db.behaviors.filter(x=>inRange(x)&&activeIds.has(x.studentId)), grades=db.grades.filter(x=>inRange(x)&&activeIds.has(x.studentId));
   const totalKhen=behaviors.filter(x=>x.type==="Khen").length;
   const totalNhac=behaviors.filter(x=>x.type==="Nhắc").length;
   const totalViPham=behaviors.filter(x=>x.type==="Vi phạm").length;
@@ -150,12 +180,12 @@ function exportExcel(){
 
 function renderStudents(){
   let q=($("studentSearch").value||"").toLowerCase(),filter=$("classFilter").value||db.activeClassId;
-  let a=db.students.filter(s=>(filter==="all"||s.classId===filter)&&(s.name+" "+s.code).toLowerCase().includes(q));
+  let a=schoolStudents().filter(s=>(filter==="all"||s.classId===filter)&&(s.name+" "+s.code).toLowerCase().includes(q));
   $("studentCount").textContent=a.length+" học sinh";
   $("studentList").innerHTML=a.map(s=>{let g=db.grades.filter(x=>x.studentId===s.id);let cn=db.classes.find(c=>c.id===s.classId)?.name||"Chưa phân lớp";return `<div class="student-row"><div class="student-initial">${esc(initials(s.name))}</div><div class="student-info"><b>${esc(s.name)}</b><small>Mã: ${esc(s.code||"—")} · ${esc(cn)}</small></div><div class="student-metrics"><b>${g.length?(g.reduce((a,x)=>a+Number(x.score),0)/g.length).toFixed(1):"—"}</b>ĐTB</div><button class="plain-btn student-action" onclick="editStudentProfile('${s.id}')">Hồ sơ</button><button class="plain-btn student-action" onclick="printStudentReport('${s.id}')">Phiếu</button><button class="delete-btn" aria-label="Chuyển lớp" title="Chuyển lớp" onclick="moveStudent('${s.id}')">⇄</button><button class="delete-btn" aria-label="Xóa học sinh" onclick="removeStudent('${s.id}')">⋯</button></div>`}).join("")||'<div class="feed-item"><div class="feed-main"><b>Chưa có học sinh</b><small>Chọn lớp hoặc nhấn + Thêm để tạo hồ sơ.</small></div></div>';
 }
-function renderBehaviorFeed(){let arr=db.behaviors.slice(0,12);$("behaviorFeed").innerHTML=arr.map(x=>{let cls=x.type==="Khen"?"":x.type==="Nhắc"?"remind":"negative";return `<div class="feed-item"><div class="feed-mark ${cls}">${x.type==="Khen"?"✓":x.type==="Nhắc"?"!":"×"}</div><div class="feed-main"><b>${esc(nameOf(x.studentId))}</b><small>${esc(x.type)} · ${esc(x.note||"Đã ghi nhận")} · ${esc(x.time||"")}</small></div><button class="delete-btn" onclick="removeRecord('behaviors','${x.id}')">×</button></div>`}).join("")||'<div class="feed-item"><div class="feed-main"><b>Chưa có ghi nhận</b><small>Chọn học sinh và chạm một nút nề nếp để nhập nhanh.</small></div></div>'}
-function renderGradeFeed(){let arr=db.grades.slice(0,12);$("gradeFeed").innerHTML=arr.map(x=>`<div class="feed-item"><div class="feed-mark" style="background:#edf1ff;color:#3f63dc">▤</div><div class="feed-main"><b>${esc(nameOf(x.studentId))}</b><small>${esc(x.subject)} · ${esc(x.kind)} · ${esc(x.time||"")}</small></div><strong class="feed-score">${Number(x.score).toFixed(1)}</strong><button class="delete-btn" onclick="removeRecord('grades','${x.id}')">×</button></div>`).join("")||'<div class="feed-item"><div class="feed-main"><b>Chưa có điểm</b><small>Chọn học sinh, môn học và chạm mức điểm.</small></div></div>'}
+function renderBehaviorFeed(){let activeIds=new Set(schoolStudents().map(s=>s.id));let arr=db.behaviors.filter(x=>activeIds.has(x.studentId)).slice(0,12);$("behaviorFeed").innerHTML=arr.map(x=>{let cls=x.type==="Khen"?"":x.type==="Nhắc"?"remind":"negative";return `<div class="feed-item"><div class="feed-mark ${cls}">${x.type==="Khen"?"✓":x.type==="Nhắc"?"!":"×"}</div><div class="feed-main"><b>${esc(nameOf(x.studentId))}</b><small>${esc(x.type)} · ${esc(x.note||"Đã ghi nhận")} · ${esc(x.time||"")}</small></div><button class="delete-btn" onclick="removeRecord('behaviors','${x.id}')">×</button></div>`}).join("")||'<div class="feed-item"><div class="feed-main"><b>Chưa có ghi nhận</b><small>Chọn học sinh và chạm một nút nề nếp để nhập nhanh.</small></div></div>'}
+function renderGradeFeed(){let activeIds=new Set(schoolStudents().map(s=>s.id));let arr=db.grades.filter(x=>activeIds.has(x.studentId)).slice(0,12);$("gradeFeed").innerHTML=arr.map(x=>`<div class="feed-item"><div class="feed-mark" style="background:#edf1ff;color:#3f63dc">▤</div><div class="feed-main"><b>${esc(nameOf(x.studentId))}</b><small>${esc(x.subject)} · ${esc(x.kind)} · ${esc(x.time||"")}</small></div><strong class="feed-score">${Number(x.score).toFixed(1)}</strong><button class="delete-btn" onclick="removeRecord('grades','${x.id}')">×</button></div>`).join("")||'<div class="feed-item"><div class="feed-main"><b>Chưa có điểm</b><small>Chọn học sinh, môn học và chạm mức điểm.</small></div></div>'}
 function renderClassList(){
   $("classList").innerHTML=db.classes.map(c=>{let count=db.students.filter(s=>s.classId===c.id).length;return `<div class="class-item"><div><b>${esc(c.name)}</b><small>${count} học sinh</small></div><button class="plain-btn" onclick="renameClass('${c.id}')">Đổi tên</button><button class="plain-btn" onclick="deleteClass('${c.id}')">Xóa</button></div>`}).join("");
 }
@@ -166,8 +196,6 @@ $("scorePad").addEventListener("click",e=>{let b=e.target.closest("[data-score]"
 $("clearScore").onclick=()=>{selectedScore=null;$("chosenScore").textContent="—";document.querySelectorAll("#scorePad button").forEach(x=>x.classList.remove("selected"))};
 $("addGrade").onclick=()=>{let sid=$("gradeStudent").value,sub=$("gradeSubject").value.trim();if(!sid)return toast("Hãy thêm học sinh vào lớp trước");if(!sub)return toast("Nhập tên môn học");if(selectedScore===null)return toast("Chọn mức điểm");db.grades.unshift({id:uid(),studentId:sid,subject:sub,kind:$("gradeKind").value,score:selectedScore,date:today(),time:new Date().toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})});$("clearScore").click();persist();toast("Đã lưu điểm "+selectedScore)};
 $("studentSearch").oninput=renderStudents;
-$("schoolName").addEventListener("change",()=>{db.schoolName=$("schoolName").value.trim();persist();toast("Đã lưu tên trường")});
-$("schoolYear").addEventListener("change",()=>{const value=$("schoolYear").value.trim();if(value&&!/^(20\d{2})\s*[-–/]\s*(20\d{2})$/.test(value))return toast("Năm học nhập theo dạng 2026-2027");db.schoolYear=value||"2026-2027";persist();toast("Đã lưu năm học")});
 $("statsPeriod").addEventListener("change",()=>{renderStats();renderRanking();renderProgress()});
 $("progressStudent").addEventListener("change",renderProgress);
 $("exportExcel").addEventListener("click",exportExcel);
@@ -184,7 +212,7 @@ $("openAddStudent").onclick=()=>{editingStudentId=null;$("studentModalTitle").te
 function editStudentProfile(id){const s=db.students.find(x=>x.id===id);if(!s)return;editingStudentId=id;$("studentModalTitle").textContent="Cập nhật hồ sơ học sinh";setProfileForm(s);$("studentModal").classList.remove("hidden");}
 function closeStudent(){$("studentModal").classList.add("hidden");editingStudentId=null;setProfileForm(null)}
 $("closeStudentModal").onclick=$("cancelStudent").onclick=closeStudent;
-$("saveStudent").onclick=()=>{let name=$("newStudentName").value.trim();if(!name)return toast("Nhập họ tên học sinh");let code=$("newStudentCode").value.trim()||String(classStudents().length+1).padStart(2,"0");const profile=readProfileForm(),wasEditing=Boolean(editingStudentId);if(editingStudentId){const s=db.students.find(x=>x.id===editingStudentId);if(!s)return closeStudent();s.name=name;s.code=code;s.profile={...(s.profile||{}),...profile};}else{db.students.push({id:uid(),name,code,classId:db.activeClassId,profile});}closeStudent();persist();toast(wasEditing?"Đã cập nhật hồ sơ":"Đã thêm học sinh vào "+currentClass().name)};
+$("saveStudent").onclick=()=>{let name=$("newStudentName").value.trim();if(!name)return toast("Nhập họ tên học sinh");let code=$("newStudentCode").value.trim()||String(classStudents().length+1).padStart(2,"0");const profile=readProfileForm(),wasEditing=Boolean(editingStudentId);if(editingStudentId){const s=db.students.find(x=>x.id===editingStudentId);if(!s)return closeStudent();s.name=name;s.code=code;s.profile={...(s.profile||{}),...profile};}else{db.students.push({id:uid(),name,code,classId:db.activeClassId,schoolId:db.activeSchoolId,schoolYearId:db.activeSchoolYearId,profile});}closeStudent();persist();toast(wasEditing?"Đã cập nhật hồ sơ":"Đã thêm học sinh vào "+currentClass().name)};
 
 function automaticComment(m,student){
   const parts=[];
@@ -244,6 +272,31 @@ $("printClassReport").addEventListener("click",printClassReport);
 function moveStudent(id){let s=db.students.find(x=>x.id===id);if(!s)return;let choices=db.classes.filter(c=>c.id!==s.classId);if(!choices.length)return toast("Hãy tạo thêm lớp trước");let menu=choices.map((c,i)=>(i+1)+". "+c.name).join("\\n");let n=prompt("Chuyển "+s.name+" sang lớp nào?\\n"+menu+"\\nNhập số thứ tự:");let target=choices[Number(n)-1];if(target){s.classId=target.id;persist();toast("Đã chuyển học sinh")}}
 function removeStudent(id){if(!confirm("Xóa học sinh này và toàn bộ điểm, ghi nhận liên quan?"))return;db.students=db.students.filter(s=>s.id!==id);db.grades=db.grades.filter(x=>x.studentId!==id);db.behaviors=db.behaviors.filter(x=>x.studentId!==id);persist()}
 function removeRecord(type,id){if(!confirm("Xóa bản ghi này?"))return;db[type]=db[type].filter(x=>x.id!==id);persist()}
+function validSchoolYear(value){return /^(20\d{2})\s*[-–/]\s*(20\d{2})$/.test(value)}
+function openSchoolManager(){$("newSchoolName").value="";$("newSchoolYear").value=currentSchoolYear().label;$("appendSchoolYear").value="";renderSchoolManager();$("schoolModal").classList.remove("hidden")}
+function renderSchoolManager(){
+  $("schoolManageList").innerHTML=db.schools.map(s=>`<div class="class-item"><div><b>${esc(s.name)}</b><small>${s.years.length} năm học · ${s.years.map(y=>esc(y.label)).join(", ")}</small></div><button class="plain-btn" onclick="selectSchoolForManage('${s.id}')">Chọn</button></div>`).join("");
+}
+function selectSchoolForManage(id){if(!db.schools.some(s=>s.id===id))return;db.activeSchoolId=id;db.activeSchoolYearId=currentSchool().years[0].id;persist();renderSchoolManager();toast("Đã chọn "+currentSchool().name)}
+$("manageSchools").onclick=openSchoolManager;
+$("closeSchoolModal").onclick=()=>$("schoolModal").classList.add("hidden");
+$("addSchool").onclick=()=>{
+  const name=$("newSchoolName").value.trim(),year=$("newSchoolYear").value.trim();
+  if(!name)return toast("Nhập tên trường");
+  if(!validSchoolYear(year))return toast("Năm học theo dạng 2026-2027");
+  if(db.schools.some(s=>s.name.toLocaleLowerCase("vi")===name.toLocaleLowerCase("vi")))return toast("Trường đã tồn tại");
+  const school={id:uid(),name,years:[{id:uid(),label:year}]};db.schools.push(school);db.activeSchoolId=school.id;db.activeSchoolYearId=school.years[0].id;persist();renderSchoolManager();toast("Đã thêm trường "+name);
+};
+$("addSchoolYear").onclick=()=>{
+  const value=$("appendSchoolYear").value.trim(),school=currentSchool();
+  if(!validSchoolYear(value))return toast("Năm học theo dạng 2026-2027");
+  if(school.years.some(y=>y.label===value))return toast("Năm học này đã có");
+  const year={id:uid(),label:value};school.years.push(year);db.activeSchoolYearId=year.id;$("appendSchoolYear").value="";persist();renderSchoolManager();toast("Đã thêm năm học "+value);
+};
+$("activeSchool").addEventListener("change",()=>{
+  db.activeSchoolId=$("activeSchool").value;db.activeSchoolYearId=currentSchool().years[0].id;persist();
+});
+$("activeSchoolYear").addEventListener("change",()=>{db.activeSchoolYearId=$("activeSchoolYear").value;persist()});
 $("classSettings").onclick=()=>{$("classModal").classList.remove("hidden");$("classNameInput").value=""};
 function closeClass(){$("classModal").classList.add("hidden")}
 $("closeClassModal").onclick=closeClass;

@@ -105,3 +105,14 @@
   .print-sheet th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .signature-row{display:flex;justify-content:space-around;text-align:center;margin-top:42px;break-inside:avoid}
 }
+
+/* Multi-school and school-year selector */
+.school-select-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.school-select-fields .big-select{margin:6px 0 0}
+.school-manage-btn{padding:8px 0}
+.school-panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin:12px auto;max-width:650px}
+.school-panel-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;font-size:11px;font-weight:850;letter-spacing:.7px}
+.school-panel-title small{font-size:10px;font-weight:500;letter-spacing:0;color:var(--muted)}
+.divider-line{height:1px;background:var(--line);margin:14px 0}
+#schoolModal .modal-card{max-height:90vh;overflow:auto}
+@media(max-width:430px){.school-panel-title{align-items:flex-start;flex-direction:column}.school-select-fields{grid-template-columns:1fr}}
