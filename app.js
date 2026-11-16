@@ -287,6 +287,26 @@ $("addSchool").onclick=()=>{
   if(db.schools.some(s=>s.name.toLocaleLowerCase("vi")===name.toLocaleLowerCase("vi")))return toast("Trường đã tồn tại");
   const school={id:uid(),name,years:[{id:uid(),label:year}]};db.schools.push(school);db.activeSchoolId=school.id;db.activeSchoolYearId=school.years[0].id;persist();renderSchoolManager();toast("Đã thêm trường "+name);
 };
+$("addSchoolList").onclick=()=>{
+  const raw=$("bulkSchoolNames").value;
+  const year=$("bulkSchoolYear").value.trim();
+  if(!validSchoolYear(year))return toast("Năm học theo dạng 2026-2027");
+  const names=[...new Set(raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean))];
+  if(!names.length)return toast("Nhập ít nhất một tên trường, mỗi dòng một trường");
+  const existing=new Set(db.schools.map(s=>s.name.trim().toLocaleLowerCase("vi")));
+  const added=[];const skipped=[];
+  names.forEach(name=>{
+    const key=name.toLocaleLowerCase("vi");
+    if(existing.has(key)){skipped.push(name);return;}
+    const school={id:uid(),name,years:[{id:uid(),label:year}]};
+    db.schools.push(school);existing.add(key);added.push(school);
+  });
+  if(added.length){db.activeSchoolId=added[0].id;db.activeSchoolYearId=added[0].years[0].id;persist();}
+  renderSchoolManager();
+  $("bulkSchoolNames").value="";
+  const message=added.length?`Đã tạo ${added.length} trường${skipped.length?`; bỏ qua ${skipped.length} trường đã tồn tại`:""}`:("Không có trường mới; các tên nhập vào đã tồn tại");
+  toast(message);
+};
 $("addSchoolYear").onclick=()=>{
   const value=$("appendSchoolYear").value.trim(),school=currentSchool();
   if(!validSchoolYear(value))return toast("Năm học theo dạng 2026-2027");
