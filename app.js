@@ -199,6 +199,85 @@ $("studentSearch").oninput=renderStudents;
 $("statsPeriod").addEventListener("change",()=>{renderStats();renderRanking();renderProgress()});
 $("progressStudent").addEventListener("change",renderProgress);
 $("exportExcel").addEventListener("click",exportExcel);
+// Nhập danh sách học sinh từ file Excel theo mẫu tải xuống.
+let pendingExcelStudents=[];
+function normalizeExcelText(value){return String(value??"").trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D").toLowerCase().replace(/[^a-z0-9]/g,"")}
+function excelDate(value){
+  if(value===undefined||value===null||value==="")return "";
+  if(value instanceof Date&&!Number.isNaN(value.getTime()))return [value.getFullYear(),String(value.getMonth()+1).padStart(2,"0"),String(value.getDate()).padStart(2,"0")].join("-");
+  if(typeof value==="number"&&window.XLSX){const d=XLSX.SSF.parse_date_code(value);if(d)return `${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`}
+  const v=String(value).trim();if(!v)return "";
+  let m=v.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);if(m)return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  m=v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);if(m)return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  return "";
+}
+function downloadStudentTemplate(){
+  if(!window.XLSX)return alert("Chưa tải được thư viện Excel. Hãy kết nối Internet rồi thử lại.");
+  const headers=["STT","MaHS","HoTen","Lop","NgaySinh","GioiTinh","DiaChi","HoTenPhuHuynh","SDTPhuHuynh","DiemManh","NoiDungCanHoTro","GhiChu"];
+  const ws=XLSX.utils.aoa_to_sheet([headers]);
+  ws["!cols"]=[{wch:8},{wch:16},{wch:26},{wch:14},{wch:14},{wch:12},{wch:30},{wch:26},{wch:18},{wch:28},{wch:30},{wch:30}];
+  const info=[
+    ["HƯỚNG DẪN NHẬP DANH SÁCH HỌC SINH"],
+    ["1. Điền dữ liệu ở sheet DanhSachHocSinh, bắt đầu từ dòng 2; không sửa tên cột ở dòng 1."],
+    ["2. Bắt buộc: HoTen và Lop. Các cột khác có thể để trống."],
+    ["3. NgaySinh dùng định dạng dd/mm/yyyy hoặc yyyy-mm-dd; GioiTinh: Nam, Nữ hoặc Khác."],
+    ["4. Mỗi dòng là một học sinh. Không gộp ô, không để dòng tiêu đề phụ trong danh sách."],
+    ["5. Khi tải lên, học sinh được thêm vào trường và năm học đang chọn. Lớp chưa tồn tại sẽ tự tạo."],
+    ["6. Hệ thống bỏ qua học sinh trùng mã; nếu không có mã, đối chiếu họ tên và lớp trong cùng trường/năm học."]
+  ];
+  const guide=XLSX.utils.aoa_to_sheet(info);guide["!cols"]=[{wch:115}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"DanhSachHocSinh");XLSX.utils.book_append_sheet(wb,guide,"HuongDan");
+  XLSX.writeFile(wb,"Mau_Nhap_Danh_Sach_Hoc_Sinh.xlsx");
+}
+function parseStudentExcel(file){
+  if(!window.XLSX)throw new Error("Không tải được thư viện Excel. Hãy kết nối Internet rồi tải lại trang.");
+  const reader=new FileReader();reader.onload=()=>{
+    try{
+      const wb=XLSX.read(reader.result,{type:"array",cellDates:true});
+      const sheet=wb.Sheets[wb.SheetNames.find(n=>normalizeExcelText(n)==="danhsachhocsinh")||wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(sheet,{defval:"",raw:true});
+      if(!rows.length)throw new Error("File chưa có dữ liệu học sinh hoặc thiếu dòng tiêu đề.");
+      const headerMap={};Object.keys(rows[0]).forEach(k=>headerMap[normalizeExcelText(k)]=k);
+      const col=(...names)=>{for(const n of names){const k=headerMap[normalizeExcelText(n)];if(k!==undefined)return k}return null};
+      const fields={name:col("HoTen","Họ và tên","TenHocSinh","HoTenHocSinh"),className:col("Lop","Lớp","TenLop"),code:col("MaHS","Mã học sinh","MaHocSinh"),dob:col("NgaySinh","Ngày sinh"),gender:col("GioiTinh","Giới tính"),address:col("DiaChi","Địa chỉ"),parentName:col("HoTenPhuHuynh","Họ tên phụ huynh","PhuHuynh"),parentPhone:col("SDTPhuHuynh","Số điện thoại phụ huynh","DienThoai"),strengths:col("DiemManh","Sở trường / điểm mạnh","SoTruong"),support:col("NoiDungCanHoTro","Nội dung cần hỗ trợ","CanHoTro"),notes:col("GhiChu","Ghi chú")};
+      if(!fields.name||!fields.className)throw new Error("Không tìm thấy cột bắt buộc HoTen và Lop. Hãy dùng đúng file mẫu tải từ ứng dụng.");
+      const errors=[],valid=[],seen=new Set();let rowNo=1;
+      const current=schoolStudents();
+      rows.forEach(r=>{
+        rowNo++;const get=k=>k?r[k]:"",name=String(get(fields.name)||"").trim(),className=String(get(fields.className)||"").trim();
+        if(!name&&!className&&!String(get(fields.code)||"").trim())return;
+        if(!name||!className){errors.push(`Dòng ${rowNo}: thiếu ${!name?"họ tên":"tên lớp"}.`);return}
+        const code=String(get(fields.code)||"").trim();
+        const key=code?"code:"+normalizeExcelText(code)+"|class:"+normalizeExcelText(className):"name:"+normalizeExcelText(name)+"|class:"+normalizeExcelText(className);
+        const exists=current.some(st=>code?(normalizeExcelText(st.code)===normalizeExcelText(code)&&normalizeExcelText(db.classes.find(c=>c.id===st.classId)?.name)===normalizeExcelText(className)):(normalizeExcelText(st.name)===normalizeExcelText(name)&&normalizeExcelText(db.classes.find(c=>c.id===st.classId)?.name)===normalizeExcelText(className)));
+        if(exists||seen.has(key)){errors.push(`Dòng ${rowNo}: học sinh trùng ${code?"mã "+code:"họ tên và lớp"}, đã bỏ qua.`);return}
+        seen.add(key);
+        const gender=String(get(fields.gender)||"").trim();
+        valid.push({name,code,dob:excelDate(get(fields.dob)),gender:/^(nam|n)$/i.test(gender)?"Nam":/^(nu|nữ|f)$/i.test(gender)?"Nữ":gender?"Khác":"",address:String(get(fields.address)||"").trim(),parentName:String(get(fields.parentName)||"").trim(),parentPhone:String(get(fields.parentPhone)||"").trim(),strengths:String(get(fields.strengths)||"").trim(),support:String(get(fields.support)||"").trim(),notes:String(get(fields.notes)||"").trim(),className});
+      });
+      pendingExcelStudents=valid;
+      const preview=$("studentExcelPreview");
+      preview.innerHTML=`<div class="preview-summary"><b>Kiểm tra file hoàn tất</b><br>Hợp lệ để nhập: <b>${valid.length}</b> học sinh · Bỏ qua / cần kiểm tra: <b>${errors.length}</b> dòng.<br>Trường: <b>${esc(currentSchool().name)}</b> · Năm học: <b>${esc(currentSchoolYear().label)}</b></div>${errors.length?`<ul class="preview-errors">${errors.slice(0,12).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>${errors.length>12?`<small>Còn ${errors.length-12} dòng lỗi khác.</small>`:""}`:"<p>Không phát hiện dòng trùng hoặc thiếu thông tin bắt buộc.</p>"}${valid.length?'<button class="submit-btn preview-confirm" id="confirmStudentExcel">✓ NHẬP '+valid.length+' HỌC SINH VÀO ỨNG DỤNG</button>':"<p>Không có học sinh hợp lệ để nhập.</p>"}`;
+      const confirmBtn=$("confirmStudentExcel");if(confirmBtn)confirmBtn.onclick=commitStudentExcel;
+    }catch(err){pendingExcelStudents=[];$("studentExcelPreview").textContent=err.message||"Không đọc được file Excel."}
+    $("studentExcelFile").value="";
+  };reader.onerror=()=>{$("studentExcelPreview").textContent="Không thể đọc file đã chọn."};reader.readAsArrayBuffer(file);
+}
+function commitStudentExcel(){
+  if(!pendingExcelStudents.length)return;
+  if(!confirm(`Nhập ${pendingExcelStudents.length} học sinh vào ${currentSchool().name} – năm học ${currentSchoolYear().label}?`))return;
+  let added=0;
+  pendingExcelStudents.forEach(item=>{
+    let cls=db.classes.find(c=>normalizeExcelText(c.name)===normalizeExcelText(item.className));
+    if(!cls){cls={id:uid(),name:item.className};db.classes.push(cls)}
+    const code=item.code||String(added+1).padStart(2,"0");
+    db.students.push({id:uid(),name:item.name,code,classId:cls.id,schoolId:db.activeSchoolId,schoolYearId:db.activeSchoolYearId,profile:{dob:item.dob,gender:item.gender,address:item.address,parentName:item.parentName,parentPhone:item.parentPhone,strengths:item.strengths,support:item.support,notes:item.notes}});added++;
+  });
+  pendingExcelStudents=[];$("studentExcelPreview").innerHTML=`<div class="preview-summary">Đã nhập thành công <b>${added}</b> học sinh.</div>`;persist();$("classFilter").value="all";renderStudents();toast(`Đã nhập ${added} học sinh từ Excel`);
+}
+$("downloadStudentTemplate").addEventListener("click",downloadStudentTemplate);
+$("studentExcelFile").addEventListener("change",e=>{const file=e.target.files?.[0];if(file)parseStudentExcel(file)});
+
 function setProfileForm(s){
   const p=s?.profile||{};
   $("newStudentName").value=s?.name||"";$("newStudentCode").value=s?.code||"";

@@ -69,3 +69,11 @@ CAC CHUC NANG NANG CAO (PHIEN BAN MO RONG)
 
 \nE. HO SO HOC SINH VA BAO CAO CHU NHIEM (BAN NANG CAP)\n- Trong tab Hoc sinh, chon Ho so de cap nhat ngay sinh, gioi tinh, dia chi, thong tin phu huynh, diem manh, noi dung can ho tro va ghi chu.\n- Chon Phieu de in phieu danh gia hoc sinh theo khoang thoi gian dang chon. Trinh duyet co the chon Save as PDF.\n- Nut In bao cao tong ket lop tao bang tong hop si so, diem, ne nep va xep loai cua lop.\n- Nhan xet duoc tao tu du lieu diem va ne nep da nhap; giao vien can doc lai, bo sung minh chung thuc te truoc khi su dung lam nhan xet chinh thuc.\n- Ho so duoc luu cung du lieu hoc sinh tren localStorage va Firebase Firestore theo tai khoan dang nhap.\n
 \nF. QUAN LY NHIEU TRUONG VA NAM HOC\n- Chon truong va nam hoc tren dau ung dung de loc danh sach hoc sinh, diem va ne nep theo dung don vi dang chon.\n- Bam Quan ly danh sach truong va nam hoc de them truong moi, khai bao nam hoc dau tien va bo sung cac nam hoc tiep theo.\n- Moi ho so hoc sinh duoc gan schoolId va schoolYearId. Du lieu cu duoc tu dong chuyen vao truong/nam hoc da khai bao truoc khi nang cap.\n- Khi chuyen truong hoac nam hoc, ung dung chi hien thi hoc sinh thuoc truong va nam hoc do; du lieu cua cac truong/nam hoc khac van duoc giu lai.\n
+
+NHAP DANH SACH HOC SINH TU EXCEL
+- Mo muc Hoc sinh, tim khoi "Nhap danh sach hoc sinh tu Excel".
+- Bam "Tai file Excel mau" va nhap du lieu trong sheet DanhSachHocSinh.
+- Khong doi ten cac cot; bat buoc co HoTen va Lop. Cac cot con lai co the de trong.
+- Luu file .xlsx, bam "Chon file Excel" de tai len. Ung dung se kiem tra dong thieu du lieu va hoc sinh trung ma (trong cung lop), hoac trung ho ten va lop.
+- Xem ket qua kiem tra, sau do bam nut nhap de them hoc sinh vao truong va nam hoc dang chon. Lop chua ton tai se duoc tao tu dong.
+- Can ket noi Internet lan dau de tai thu vien SheetJS tu CDN.

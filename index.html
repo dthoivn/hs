@@ -102,6 +102,12 @@
     <p class="ranking-note">Tạo báo cáo lớp theo khoảng thời gian đang chọn ở phần thống kê. Báo cáo gồm sĩ số, kết quả học tập, nề nếp, xếp loại và danh sách học sinh.</p>
     <button class="submit-btn" id="printClassReport">▤ IN BÁO CÁO TỔNG KẾT LỚP</button>
   </section>
+  <section class="stats-panel excel-import-panel">
+    <div class="stats-heading"><div><span class="eyebrow">NHẬP DỮ LIỆU HÀNG LOẠT</span><h2>Nhập danh sách học sinh từ Excel</h2></div><span class="counter">.xlsx</span></div>
+    <p class="ranking-note">Tải file mẫu, điền thông tin học sinh rồi tải file lên. Học sinh sẽ được thêm vào trường, năm học đang chọn; lớp chưa có sẽ được tạo tự động.</p>
+    <div class="excel-import-actions"><button class="plain-btn" id="downloadStudentTemplate">⇩ TẢI FILE EXCEL MẪU</button><label class="submit-btn excel-upload-label">⇧ CHỌN FILE EXCEL<input id="studentExcelFile" type="file" accept=".xlsx,.xls" hidden></label></div>
+    <div id="studentExcelPreview" class="excel-preview" aria-live="polite"></div>
+  </section>
   <div class="student-tools"><input id="studentSearch" class="big-input" placeholder="Tìm tên học sinh..." autocomplete="off"><button class="add-student-short" id="openAddStudent">＋ Thêm</button></div>
   <div class="class-filter-row"><label class="field-label" for="classFilter">Lọc theo lớp</label><select id="classFilter" class="big-select"><option value="all">Tất cả lớp</option></select></div>
   <div id="studentList" class="student-list"></div>
