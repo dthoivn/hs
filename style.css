@@ -129,3 +129,12 @@
 .excel-preview .preview-confirm{margin-top:10px}
 @media(max-width:520px){.excel-import-actions>*{width:100%}}
 .excel-template-download{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer;min-height:44px;padding:0 14px;border-radius:10px;background:#eef2ff;color:#405fd0;font-weight:800}
+
+.behavior-class-picker{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.behavior-class-picker .big-select{margin-bottom:0}
+
+/* Fix cuộn danh sách lớp trong hộp thoại Quản lý lớp trên điện thoại */
+body:has(.modal:not(.hidden)){overflow:hidden}
+.modal{overscroll-behavior:contain;touch-action:pan-y}
+.modal-card{max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+#classModal .modal-card{max-height:90vh;max-height:90dvh;overflow-y:auto}
+#classModal .class-list{max-height:min(45vh,360px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:2px 3px}
