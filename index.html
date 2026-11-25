@@ -155,12 +155,15 @@
     <div class="timetable-image-head">
       <div>
         <span class="eyebrow">ẢNH CHỤP THỜI KHÓA BIỂU</span>
-        <b>Hình ảnh TKB đính kèm</b>
+        <b>Hình ảnh TKB đính kèm <span id="ttImageCountBadge" class="tt-img-count-badge"></span></b>
       </div>
-      <label class="add-student-short tt-img-upload-btn" for="timetableImageInput">
-        ＋ Thêm hình ảnh TKB
-        <input id="timetableImageInput" type="file" accept="image/*" hidden>
-      </label>
+      <div class="tt-img-head-actions">
+        <button type="button" class="plain-btn danger-link hidden" id="clearAllTtImagesBtn" onclick="deleteAllTimetableImages()">Xóa tất cả</button>
+        <label class="add-student-short tt-img-upload-btn" for="timetableImageInput">
+          ＋ Thêm hình ảnh TKB
+          <input id="timetableImageInput" type="file" accept="image/*" multiple hidden>
+        </label>
+      </div>
     </div>
     <div id="timetableImageContainer" class="tt-image-container"></div>
   </div>
@@ -170,7 +173,12 @@
   <div class="tt-lightbox-card">
     <div class="tt-lightbox-head">
       <b id="ttLightboxTitle">Ảnh thời khóa biểu</b>
-      <button type="button" onclick="closeTtLightbox()">×</button>
+      <div class="tt-lightbox-nav">
+        <button type="button" id="ttLightboxPrev" onclick="stepTtLightbox(-1)" title="Ảnh trước">‹</button>
+        <span id="ttLightboxCounter" class="tt-lightbox-counter">1 / 1</span>
+        <button type="button" id="ttLightboxNext" onclick="stepTtLightbox(1)" title="Ảnh sau">›</button>
+        <button type="button" onclick="closeTtLightbox()" title="Đóng">×</button>
+      </div>
     </div>
     <div class="tt-lightbox-body">
       <img id="ttLightboxImg" src="" alt="Ảnh thời khóa biểu phóng to">
