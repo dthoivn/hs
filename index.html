@@ -2,7 +2,36 @@
 <html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#14233d"><title>Smart Class Quick</title><link rel="stylesheet" href="style.css"></head>
 <body>
 <header class="top"><div class="brand"><span class="logo">S</span><div><b>Smart Class</b><small id="classLabel">Lớp học của tôi</small></div></div><button class="save-chip" id="saveStatus">● Đã lưu</button></header>
+<section class="school-panel" aria-label="Chọn trường và năm học">
+  <div class="school-panel-title"><span>ĐƠN VỊ ĐANG QUẢN LÝ</span><small>Dữ liệu học sinh được phân tách theo trường và năm học</small></div>
+  <div class="school-fields school-select-fields">
+    <label>Chọn trường<select id="activeSchool" class="big-select"></select></label>
+    <label>Chọn năm học<select id="activeSchoolYear" class="big-select"></select></label>
+  </div>
+  <div class="behavior-class-picker">
+    <label class="field-label" for="behaviorClassSelect">Danh sách lớp · Nề nếp</label>
+    <select id="behaviorClassSelect" class="big-select"></select>
+  </div>
+  <button class="plain-btn school-manage-btn" id="manageSchools">⚙ Quản lý danh sách trường và năm học</button>
+</section>
+<section class="cloud-auth" id="cloudAuth">
+  <div class="cloud-auth-head"><b>Đồng bộ nhiều thiết bị</b><span id="cloudState">Chưa đăng nhập</span></div>
+  <div id="loginForm">
+    <input id="loginEmail" class="big-input" type="email" autocomplete="username" placeholder="Email giáo viên">
+    <input id="loginPassword" class="big-input" type="password" autocomplete="current-password" placeholder="Mật khẩu">
+    <button class="submit-btn" id="loginButton">ĐĂNG NHẬP VÀ ĐỒNG BỘ</button>
+  </div>
+  <div id="signedInPanel" class="hidden">
+    <div class="signed-email" id="signedEmail"></div>
+    <button class="plain-btn" id="logoutButton">Đăng xuất</button>
+  </div>
+  <small class="cloud-help">Dữ liệu được đồng bộ riêng theo tài khoản giáo viên. Chỉ người được cấp tài khoản mới truy cập được.</small>
+  <div id="cloudError" class="cloud-error" role="alert"></div>
+</section>
 <main>
+
+
+
 <section class="screen active" id="screen-behavior">
   <div class="screen-head"><div><span class="eyebrow">GHI NHẬN NHANH</span><h1>Nề nếp</h1></div><span class="counter" id="behaviorTodayCount">0 hôm nay</span></div>
   <div class="quick-panel">
@@ -25,7 +54,7 @@
   <div class="screen-head"><div><span class="eyebrow">NHẬP ĐIỂM TẠI LỚP</span><h1>Điểm</h1></div><span class="counter" id="gradeTodayCount">0 điểm hôm nay</span></div>
   <div class="quick-panel">
     <label class="field-label" for="gradeStudent">Học sinh</label><select id="gradeStudent" class="big-select"></select>
-    <div class="split-fields"><div><label class="field-label" for="gradeSubject">Môn</label><input id="gradeSubject" class="big-input" placeholder="Toán"></div><div><label class="field-label" for="gradeKind">Loại điểm</label><select id="gradeKind" class="big-select compact"><option>Miệng</option><option>Thường xuyên</option><option>15 phút</option><option>Giữa kỳ</option><option>Cuối kỳ</option></select></div></div>
+    <div class="split-fields"><div><label class="field-label" for="gradeSubject">Môn học (cố định)</label><input id="gradeSubject" class="big-input" value="Tin học" readonly aria-readonly="true"></div><div><label class="field-label" for="gradeKind">Loại điểm</label><select id="gradeKind" class="big-select compact"><option>Miệng</option><option>Thường xuyên</option><option>15 phút</option><option>Giữa kỳ</option><option>Cuối kỳ</option></select></div></div>
     <label class="field-label">Chọn điểm</label>
     <div class="score-pad" id="scorePad">
       <button data-score="10">10</button><button data-score="9">9</button><button data-score="8">8</button><button data-score="7">7</button><button data-score="6">6</button><button data-score="5">5</button><button data-score="4">4</button><button data-score="3">3</button><button data-score="2">2</button><button data-score="1">1</button><button data-score="0">0</button><button data-score="9.5">9.5</button>
@@ -38,22 +67,249 @@
 
 <section class="screen" id="screen-students">
   <div class="screen-head"><div><span class="eyebrow">DANH SÁCH LỚP</span><h1>Học sinh</h1></div><span class="counter" id="studentCount">0 học sinh</span></div>
+
+  <section class="stats-panel">
+    <div class="stats-heading"><div><span class="eyebrow">BÁO CÁO TỔNG HỢP</span><h2>Thống kê học sinh</h2></div><span class="counter" id="statsStudentCount">0 học sinh</span></div>
+    <label class="field-label" for="statsPeriod">Khoảng thời gian thống kê</label>
+    <select id="statsPeriod" class="big-select">
+      <option value="day">Hôm nay</option><option value="week">Tuần này</option><option value="month">Tháng này</option>
+      <option value="hk1">Học kỳ I</option><option value="hk2">Học kỳ II</option><option value="year" selected>Cả năm học</option>
+    </select>
+    <div class="stats-summary" id="statsSummary"></div>
+    <div class="stats-list-head"><b>Chi tiết theo từng học sinh</b><small>Khen · Nhắc · Vi phạm · Điểm</small></div>
+    <div id="studentStatsList" class="student-stats-list"></div>
+  </section>
+
+  <section class="stats-panel advanced-panel">
+    <div class="stats-heading"><div><span class="eyebrow">THI ĐUA LỚP</span><h2>Xếp loại &amp; xếp hạng</h2></div><span class="counter">Tự động</span></div>
+    <p class="ranking-note">Điểm thi đua = điểm học tập (tối đa 60) + điểm nề nếp (tối đa 40). Nề nếp bắt đầu 30 điểm; mỗi khen +2 (tối đa +10), mỗi nhắc −2, mỗi vi phạm −5. Điểm được giới hạn trong khoảng 0–40.</p>
+    <div class="ranking-legend"><span><b>90–100</b> Xuất sắc</span><span><b>80–89</b> Tốt</span><span><b>65–79</b> Đạt</span><span><b>Dưới 65</b> Cần cố gắng</span></div>
+    <div id="rankingTable" class="ranking-list"></div>
+  </section>
+
+  <section class="stats-panel advanced-panel">
+    <div class="stats-heading"><div><span class="eyebrow">THEO DÕI CÁ NHÂN</span><h2>Biểu đồ tiến bộ</h2></div></div>
+    <label class="field-label" for="progressStudent">Chọn học sinh</label>
+    <select id="progressStudent" class="big-select"></select>
+    <div id="progressSummary" class="progress-summary"></div>
+    <div id="progressChart" class="progress-chart" role="img" aria-label="Biểu đồ điểm trung bình theo tháng"></div>
+  </section>
+
+  <section class="stats-panel advanced-panel">
+    <div class="stats-heading"><div><span class="eyebrow">BÁO CÁO</span><h2>Xuất báo cáo Excel</h2></div><span class="counter">.xlsx</span></div>
+    <p class="ranking-note">Xuất báo cáo theo khoảng thời gian đang chọn ở phần Thống kê học sinh. File gồm bảng xếp hạng, tổng hợp từng học sinh và nhật ký điểm/nề nếp.</p>
+    <button class="submit-btn" id="exportExcel">⇩ XUẤT BÁO CÁO EXCEL</button>
+    <small id="excelStatus" class="excel-status">Cần kết nối Internet lần đầu để tải thư viện tạo file Excel.</small>
+  </section>
+  <section class="stats-panel advanced-panel">
+    <div class="stats-heading"><div><span class="eyebrow">TỔNG KẾT CHỦ NHIỆM</span><h2>Báo cáo tổng kết lớp</h2></div><span class="counter">In / PDF</span></div>
+    <p class="ranking-note">Tạo báo cáo lớp theo khoảng thời gian đang chọn ở phần thống kê. Báo cáo gồm sĩ số, kết quả học tập, nề nếp, xếp loại và danh sách học sinh.</p>
+    <button class="submit-btn" id="printClassReport">▤ IN BÁO CÁO TỔNG KẾT LỚP</button>
+  </section>
+  <section class="stats-panel excel-import-panel">
+    <div class="stats-heading"><div><span class="eyebrow">NHẬP DỮ LIỆU HÀNG LOẠT</span><h2>Nhập danh sách học sinh từ Excel</h2></div><span class="counter">.xlsx</span></div>
+    <p class="ranking-note">Tải file mẫu, điền thông tin học sinh rồi tải file lên. Học sinh sẽ được thêm vào trường, năm học đang chọn; lớp chưa có sẽ được tạo tự động.</p>
+    <div class="excel-import-actions"><a class="plain-btn excel-template-download" id="downloadStudentTemplate" href="Mau_Nhap_Danh_Sach_Hoc_Sinh.xlsx" download="Mau_Nhap_Danh_Sach_Hoc_Sinh.xlsx">⇩ TẢI FILE EXCEL MẪU</a><label class="submit-btn excel-upload-label">⇧ CHỌN FILE EXCEL<input id="studentExcelFile" type="file" accept=".xlsx,.xls" hidden></label></div>
+    <div id="studentExcelPreview" class="excel-preview" aria-live="polite"></div>
+  </section>
   <div class="student-tools"><input id="studentSearch" class="big-input" placeholder="Tìm tên học sinh..." autocomplete="off"><button class="add-student-short" id="openAddStudent">＋ Thêm</button></div>
   <div class="class-filter-row"><label class="field-label" for="classFilter">Lọc theo lớp</label><select id="classFilter" class="big-select"><option value="all">Tất cả lớp</option></select></div>
   <div id="studentList" class="student-list"></div>
   <div class="backup-row"><button class="plain-btn" id="exportBtn">⇩ Xuất TXT</button><label class="plain-btn import-label">⇧ Nhập TXT<input id="importFile" type="file" accept=".txt,text/plain" hidden></label><button class="plain-btn" id="classSettings">⚙ Lớp</button></div>
 </section>
+
+<section class="screen" id="screen-timetable">
+  <div class="screen-head">
+    <div><span class="eyebrow">LỊCH GIẢNG DẠY &amp; HỌC TẬP</span><h1>Thời khóa biểu</h1></div>
+    <span class="counter" id="timetableUnitBadge">Lớp · Năm học</span>
+  </div>
+
+  <div class="quick-panel timetable-toolbar">
+    <div class="timetable-context">
+      <div class="timetable-context-info">
+        <small>Đang xem thời khóa biểu của</small>
+        <b id="timetableContextTitle">—</b>
+      </div>
+      <button class="add-student-short" id="openAddTimetable">＋ Thêm tiết</button>
+    </div>
+
+    <div class="day-pills" id="timetableDayPills" role="tablist" aria-label="Chọn thứ trong tuần">
+      <button type="button" class="day-pill active" data-day="all">Cả tuần</button>
+      <button type="button" class="day-pill" data-day="2">T2</button>
+      <button type="button" class="day-pill" data-day="3">T3</button>
+      <button type="button" class="day-pill" data-day="4">T4</button>
+      <button type="button" class="day-pill" data-day="5">T5</button>
+      <button type="button" class="day-pill" data-day="6">T6</button>
+      <button type="button" class="day-pill" data-day="7">T7</button>
+    </div>
+
+    <div class="timetable-sub-actions">
+      <button type="button" class="plain-btn" id="copyTimetableBtn">⎘ Sao chép từ lớp/năm khác</button>
+      <button type="button" class="plain-btn danger-link" id="clearTimetableBtn">Xóa TKB lớp này</button>
+    </div>
+  </div>
+
+  <div id="timetableClassicContainer" class="timetable-classic-wrap"></div>
+
+  <div class="quick-panel timetable-image-panel" id="timetableImagePanel">
+    <div class="timetable-image-head">
+      <div>
+        <span class="eyebrow">ẢNH CHỤP THỜI KHÓA BIỂU</span>
+        <b>Hình ảnh TKB đính kèm</b>
+      </div>
+      <label class="add-student-short tt-img-upload-btn" for="timetableImageInput">
+        ＋ Thêm hình ảnh TKB
+        <input id="timetableImageInput" type="file" accept="image/*" multiple hidden>
+      </label>
+    </div>
+    <div id="timetableImageContainer" class="tt-image-container"></div>
+  </div>
+</section>
+
+<div class="modal hidden" id="ttImageLightbox" onclick="if(event.target===this)closeTtLightbox()">
+  <div class="tt-lightbox-card">
+    <div class="tt-lightbox-head">
+      <b id="ttLightboxTitle">Ảnh thời khóa biểu</b>
+      <div class="tt-lightbox-nav">
+        <button type="button" id="ttLightboxPrev" onclick="stepTtLightbox(-1)" aria-label="Ảnh trước">‹</button>
+        <button type="button" id="ttLightboxNext" onclick="stepTtLightbox(1)" aria-label="Ảnh tiếp theo">›</button>
+        <button type="button" onclick="closeTtLightbox()" aria-label="Đóng">×</button>
+      </div>
+    </div>
+    <div class="tt-lightbox-body">
+      <img id="ttLightboxImg" src="" alt="Ảnh thời khóa biểu phóng to">
+    </div>
+  </div>
+</div>
+
 </main>
 <nav class="bottom-nav">
 <button class="tab active" data-screen="behavior"><span class="tab-icon">✳</span><b>Nề nếp</b></button>
 <button class="tab" data-screen="grades"><span class="tab-icon">▤</span><b>Điểm</b></button>
+<button class="tab" data-screen="timetable"><span class="tab-icon">▦</span><b>TKB</b></button>
 <button class="tab" data-screen="students"><span class="tab-icon">♙</span><b>HS</b></button>
 </nav>
-<div class="toast" id="toast"></div>
-<div class="modal hidden" id="studentModal"><div class="modal-card"><div class="modal-head"><b id="studentModalTitle">Thêm học sinh</b><button id="closeStudentModal">×</button></div><label class="field-label">Họ và tên</label><input id="newStudentName" class="big-input" placeholder="Nguyễn Văn A"><label class="field-label">Mã / STT (không bắt buộc)</label><input id="newStudentCode" class="big-input" placeholder="01"><div class="modal-actions"><button class="plain-btn" id="cancelStudent">Hủy</button><button class="submit-btn" id="saveStudent">LƯU HỌC SINH</button></div></div></div>
+<div class="toast" id="toast"></div>\n<div id="printArea"></div>
+<div class="modal hidden" id="studentModal"><div class="modal-card"><div class="modal-head"><b id="studentModalTitle">Thêm học sinh</b><button id="closeStudentModal">×</button></div><label class="field-label">Họ và tên</label><input id="newStudentName" class="big-input" placeholder="Nguyễn Văn A"><label class="field-label">Mã / STT (không bắt buộc)</label><input id="newStudentCode" class="big-input" placeholder="01">
+<div class="profile-fields">
+  <label class="field-label">Ngày sinh</label><input id="studentDob" class="big-input" type="date">
+  <label class="field-label">Giới tính</label><select id="studentGender" class="big-select"><option value="">Chưa cập nhật</option><option>Nam</option><option>Nữ</option><option>Khác</option></select>
+  <label class="field-label">Địa chỉ</label><input id="studentAddress" class="big-input" placeholder="Địa chỉ học sinh">
+  <label class="field-label">Họ tên phụ huynh</label><input id="studentParent" class="big-input" placeholder="Họ tên cha/mẹ/người giám hộ">
+  <label class="field-label">Số điện thoại phụ huynh</label><input id="studentParentPhone" class="big-input" type="tel" placeholder="Số điện thoại liên hệ">
+  <label class="field-label">Sở trường / điểm mạnh</label><textarea id="studentStrengths" class="big-input profile-textarea" placeholder="Ví dụ: chăm chỉ, hợp tác tốt..."></textarea>
+  <label class="field-label">Nội dung cần hỗ trợ</label><textarea id="studentSupport" class="big-input profile-textarea" placeholder="Ví dụ: cần rèn luyện thêm..."></textarea>
+  <label class="field-label">Ghi chú hồ sơ</label><textarea id="studentNotes" class="big-input profile-textarea" placeholder="Thông tin bổ sung..."></textarea>
+</div>
+<div class="modal-actions"><button class="plain-btn" id="cancelStudent">Hủy</button><button class="submit-btn" id="saveStudent">LƯU HỌC SINH</button></div></div></div>
+<div class="modal hidden" id="schoolModal"><div class="modal-card"><div class="modal-head"><b>Quản lý trường và năm học</b><button id="closeSchoolModal">×</button></div>
+  <label class="field-label">Tên trường mới</label><input id="newSchoolName" class="big-input" placeholder="Ví dụ: Trường THCS ...">
+  <label class="field-label">Năm học đầu tiên</label><input id="newSchoolYear" class="big-input" placeholder="2026-2027" value="2026-2027">
+  <button class="submit-btn" id="addSchool">＋ THÊM TRƯỜNG</button>
+  <div class="divider-line"></div>
+  <label class="field-label">Tạo danh sách nhiều trường (mỗi dòng một trường)</label>
+  <textarea id="bulkSchoolNames" class="big-input profile-textarea" rows="5" placeholder="Trường Tiểu học Hoa Sen&#10;Trường THCS Nguyễn Du&#10;Trường THPT Trần Phú"></textarea>
+  <label class="field-label">Năm học áp dụng cho danh sách</label>
+  <input id="bulkSchoolYear" class="big-input" placeholder="2026-2027" value="2026-2027">
+  <button class="submit-btn" id="addSchoolList">＋ TẠO DANH SÁCH TRƯỜNG</button>
+  <div class="divider-line"></div>
+  <label class="field-label">Trường đang chọn</label><div id="schoolManageList" class="class-list"></div>
+  <label class="field-label">Thêm năm học cho trường đang chọn</label><div class="class-create-row"><input id="appendSchoolYear" class="big-input" placeholder="2027-2028"><button class="add-student-short" id="addSchoolYear">＋ Thêm năm</button></div>
+  <p class="modal-note">Mỗi trường có danh sách năm học riêng. Học sinh được lưu theo đúng trường và năm học đang chọn; chuyển trường hoặc năm học sẽ không làm mất dữ liệu cũ.</p>
+</div></div>
 <div class="modal hidden" id="classModal"><div class="modal-card"><div class="modal-head"><b>Quản lý lớp</b><button id="closeClassModal">×</button></div>
 <label class="field-label">Tên lớp mới</label><div class="class-create-row"><input id="classNameInput" class="big-input" placeholder="VD: 7A1"><button class="add-student-short" id="addClass">＋ Tạo lớp</button></div>
 <div class="field-label">Danh sách lớp</div><div id="classList" class="class-list"></div>
 <p class="modal-note">Xóa lớp chỉ được thực hiện khi lớp không còn học sinh. Học sinh và điểm đã lưu không bị xóa khi đổi tên lớp.</p>
 </div></div>
-<script src="app.js"></script></body></html>
+
+<div class="modal hidden" id="timetableModal">
+  <div class="modal-card">
+    <div class="modal-head"><b id="timetableModalTitle">Thêm tiết học</b><button id="closeTimetableModal">×</button></div>
+    <div class="split-fields">
+      <div>
+        <label class="field-label" for="ttDay">Thứ</label>
+        <select id="ttDay" class="big-select">
+          <option value="2">Thứ 2</option>
+          <option value="3">Thứ 3</option>
+          <option value="4">Thứ 4</option>
+          <option value="5">Thứ 5</option>
+          <option value="6">Thứ 6</option>
+          <option value="7">Thứ 7</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label" for="ttSession">Buổi</label>
+        <select id="ttSession" class="big-select">
+          <option value="Sáng">Sáng</option>
+          <option value="Chiều">Chiều</option>
+        </select>
+      </div>
+    </div>
+    <div class="split-fields">
+      <div>
+        <label class="field-label" for="ttPeriod">Tiết</label>
+        <select id="ttPeriod" class="big-select">
+          <option value="1">Tiết 1</option>
+          <option value="2">Tiết 2</option>
+          <option value="3">Tiết 3</option>
+          <option value="4">Tiết 4</option>
+          <option value="5">Tiết 5</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label" for="ttTime">Khung giờ (tuỳ chọn)</label>
+        <input id="ttTime" class="big-input" placeholder="VD: 07:15 - 08:00">
+      </div>
+    </div>
+    <label class="field-label" for="ttSubject">Môn học / Hoạt động</label>
+    <input id="ttSubject" class="big-input" placeholder="VD: Tin học, Chào cờ, Sinh hoạt lớp..." list="ttSubjectSuggestions">
+    <datalist id="ttSubjectSuggestions">
+      <option value="Chào cờ">
+      <option value="Toán">
+      <option value="Ngữ văn">
+      <option value="Tiếng Anh">
+      <option value="Tin học">
+      <option value="Khoa học tự nhiên">
+      <option value="Lịch sử & Địa lí">
+      <option value="Giáo dục công dân">
+      <option value="Công nghệ">
+      <option value="Giáo dục thể chất">
+      <option value="Nghệ thuật">
+      <option value="Hoạt động trải nghiệm">
+      <option value="Sinh hoạt lớp">
+    </datalist>
+    <div class="split-fields">
+      <div>
+        <label class="field-label" for="ttTeacher">Giáo viên (tuỳ chọn)</label>
+        <input id="ttTeacher" class="big-input" placeholder="VD: Thầy Nam">
+      </div>
+      <div>
+        <label class="field-label" for="ttRoom">Phòng học (tuỳ chọn)</label>
+        <input id="ttRoom" class="big-input" placeholder="VD: P. Tin 1">
+      </div>
+    </div>
+    <label class="field-label" for="ttNote">Ghi chú (tuỳ chọn)</label>
+    <input id="ttNote" class="big-input" placeholder="VD: Mang USB, thực hành...">
+    <div class="modal-actions">
+      <button type="button" class="plain-btn danger-link hidden" id="deleteTimetableSlot">Xóa tiết</button>
+      <button type="button" class="plain-btn" id="cancelTimetable">Hủy</button>
+      <button type="button" class="submit-btn" id="saveTimetable">LƯU TIẾT HỌC</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal hidden" id="copyTimetableModal">
+  <div class="modal-card">
+    <div class="modal-head"><b>Sao chép thời khóa biểu</b><button id="closeCopyTimetableModal">×</button></div>
+    <p class="modal-note" style="margin-top:0">Sao chép toàn bộ tiết học từ một lớp/năm học đã có sang <b id="copyTargetLabel">—</b>.</p>
+    <label class="field-label" for="copySourceSelect">Chọn nguồn thời khóa biểu</label>
+    <select id="copySourceSelect" class="big-select"></select>
+    <div class="modal-actions">
+      <button type="button" class="plain-btn" id="cancelCopyTimetable">Hủy</button>
+      <button type="button" class="submit-btn" id="confirmCopyTimetable">SAO CHÉP SANG LỚP NÀY</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="app.js"></script><script type="module" src="firebase-sync.js"></script>\n</body></html>
