@@ -1,5 +1,5 @@
 const KEY="smartclass_quick_teacher_v1";
-let db={schoolName:"",schoolYear:"2026-2027",schools:[],activeSchoolId:"",activeSchoolYearId:"",classes:[{id:"class_default",name:"Lớp học của tôi"}],activeClassId:"class_default",students:[],grades:[],behaviors:[],timetables:[]};
+let db={schoolName:"",schoolYear:"2026-2027",schools:[],activeSchoolId:"",activeSchoolYearId:"",classes:[{id:"class_default",name:"Lớp học của tôi"}],activeClassId:"class_default",students:[],grades:[],behaviors:[],timetables:[],timetableImages:[]};
 let selectedType="Khen",selectedScore=null,editingStudentId=null,editingTimetableId=null,selectedTimetableDay="all";
 const $=id=>document.getElementById(id),today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")},uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -36,6 +36,7 @@ function ensureSchema(){
   });
   db.grades=Array.isArray(db.grades)?db.grades:[];
   db.behaviors=Array.isArray(db.behaviors)?db.behaviors:[];
+  db.timetableImages=Array.isArray(db.timetableImages)?db.timetableImages:[];
   db.timetables=Array.isArray(db.timetables)?db.timetables:[];
   db.timetables.forEach(t=>{
     if(!t.id)t.id=uid();
@@ -416,7 +417,7 @@ function closeClass(){$("classModal").classList.add("hidden")}
 $("closeClassModal").onclick=closeClass;
 $("addClass").onclick=()=>{let name=$("classNameInput").value.trim();if(!name)return toast("Nhập tên lớp");if(db.classes.some(c=>c.name.toLowerCase()===name.toLowerCase()))return toast("Tên lớp đã tồn tại");let c={id:uid(),name};db.classes.push(c);db.activeClassId=c.id;$("classNameInput").value="";persist();toast("Đã tạo lớp "+name)};
 function renameClass(id){let c=db.classes.find(x=>x.id===id);if(!c)return;let name=prompt("Tên lớp mới:",c.name);if(!name||!name.trim())return;if(db.classes.some(x=>x.id!==id&&x.name.toLowerCase()===name.trim().toLowerCase()))return toast("Tên lớp đã tồn tại");c.name=name.trim();persist();toast("Đã đổi tên lớp")}
-function deleteClass(id){let c=db.classes.find(x=>x.id===id);if(!c)return;if(db.students.some(s=>s.classId===id))return alert("Lớp vẫn còn học sinh. Hãy chuyển học sinh sang lớp khác trước.");if(db.classes.length===1)return alert("Phải giữ lại ít nhất một lớp.");if(!confirm("Xóa lớp "+c.name+"?"))return;db.classes=db.classes.filter(x=>x.id!==id);db.timetables=db.timetables.filter(t=>t.classId!==id);if(db.activeClassId===id)db.activeClassId=db.classes[0].id;persist()}
+function deleteClass(id){let c=db.classes.find(x=>x.id===id);if(!c)return;if(db.students.some(s=>s.classId===id))return alert("Lớp vẫn còn học sinh. Hãy chuyển học sinh sang lớp khác trước.");if(db.classes.length===1)return alert("Phải giữ lại ít nhất một lớp.");if(!confirm("Xóa lớp "+c.name+"?"))return;db.classes=db.classes.filter(x=>x.id!==id);db.timetables=db.timetables.filter(t=>t.classId!==id);db.timetableImages=db.timetableImages.filter(img=>img.classId!==id);if(db.activeClassId===id)db.activeClassId=db.classes[0].id;persist()}
 function exportTxt(){let p={app:"Smart Class Quick",version:3,exportedAt:new Date().toISOString(),data:db};let blob=new Blob(["SMART CLASS QUICK BACKUP\\n"+JSON.stringify(p,null,2)],{type:"text/plain;charset=utf-8"});let url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="SmartClass_"+today()+".txt";a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);toast("Đã xuất file TXT")}
 $("exportBtn").onclick=exportTxt;
 $("importFile").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let p=JSON.parse(String(r.result).replace(/^SMART CLASS QUICK BACKUP\\s*/,""));let d=p.data||p;if(!Array.isArray(d.students)||!Array.isArray(d.grades)||!Array.isArray(d.behaviors))throw 0;if(!confirm("Nhập file sẽ thay thế dữ liệu hiện tại. Tiếp tục?"))return;db={...d,classes:d.classes,activeClassId:d.activeClassId};ensureSchema();persist();toast("Đã khôi phục dữ liệu")}catch(e){alert("File TXT không đúng định dạng Smart Class Quick.")}e.target.value=""};r.readAsText(f,"UTF-8")};
@@ -452,6 +453,7 @@ function renderTimetable(){
       <p>Thiết lập thời khóa biểu riêng cho <b>${esc(school.name)}</b> – năm học <b>${esc(year.label)}</b> để tra cứu nhanh ngay trên điện thoại.</p>
       <button type="button" class="submit-btn" onclick="openTimetableModal()">＋ TẠO TIẾT HỌC ĐẦU TIÊN</button>
     </div>`;
+    renderTimetableImage();
     return;
   }
 
@@ -495,6 +497,7 @@ function renderTimetable(){
       ${sessions||`<div class="tt-empty-day">Chưa có tiết học nào trong ${DAY_NAMES[day]}.</div>`}
     </article>`;
   }).join("");
+  renderTimetableImage();
 }
 
 function openTimetableModal(id=null,defaultDay=null){
@@ -622,5 +625,109 @@ $("confirmCopyTimetable").onclick=()=>{
   persist();
   toast(`Đã sao chép ${sourceSlots.length} tiết học`);
 };
+
+
+// --- HÌNH ẢNH THỜI KHÓA BIỂU ---
+function currentTimetableImage(){
+  return db.timetableImages.find(x=>x.schoolId===db.activeSchoolId&&x.schoolYearId===db.activeSchoolYearId&&x.classId===db.activeClassId)||null;
+}
+function renderTimetableImage(){
+  const box=$("timetableImageContainer");
+  if(!box)return;
+  const imgObj=currentTimetableImage();
+  const uploadBtn=document.querySelector(".tt-img-upload-btn");
+  if(uploadBtn){
+    const input=$("timetableImageInput");
+    uploadBtn.childNodes[0].textContent=imgObj?"↻ Đổi hình ảnh TKB ":"＋ Thêm hình ảnh TKB ";
+  }
+  if(!imgObj||!imgObj.dataUrl){
+    box.innerHTML=`<div class="tt-image-empty">Chưa có ảnh thời khóa biểu cho lớp <b>${esc(currentClass().name)}</b>. Nhấn <b>＋ Thêm hình ảnh TKB</b> để tải ảnh từ điện thoại hoặc máy tính.</div>`;
+    return;
+  }
+  box.innerHTML=`<div class="tt-image-box">
+    <img class="tt-image-frame" src="${imgObj.dataUrl}" alt="Ảnh thời khóa biểu lớp ${esc(currentClass().name)}" onclick="openTtLightbox()">
+    <div class="tt-image-bar">
+      <span class="tt-image-caption">${esc(imgObj.name||"Ảnh thời khóa biểu")} · Cập nhật ${esc(imgObj.updatedAt||"")}</span>
+      <div class="tt-image-actions">
+        <button type="button" class="plain-btn" onclick="openTtLightbox()">🔍 Phóng to</button>
+        <button type="button" class="plain-btn danger-link" onclick="deleteTimetableImage()">Xóa ảnh</button>
+      </div>
+    </div>
+  </div>`;
+}
+function compressTimetableImage(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("Không đọc được file ảnh."));
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error("File không phải hình ảnh hợp lệ."));
+      img.onload=()=>{
+        const maxSide=1400;
+        let w=img.width,h=img.height;
+        if(w>maxSide||h>maxSide){
+          if(w>=h){h=Math.round(h*maxSide/w);w=maxSide;}
+          else{w=Math.round(w*maxSide/h);h=maxSide;}
+        }
+        const canvas=document.createElement("canvas");
+        canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext("2d");
+        ctx.fillStyle="#ffffff";
+        ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        let quality=0.82;
+        let dataUrl=canvas.toDataURL("image/jpeg",quality);
+        while(dataUrl.length>480000&&quality>0.45){
+          quality-=0.1;
+          dataUrl=canvas.toDataURL("image/jpeg",quality);
+        }
+        resolve(dataUrl);
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+$("timetableImageInput").addEventListener("change",async e=>{
+  const file=e.target.files?.[0];
+  e.target.value="";
+  if(!file)return;
+  try{
+    toast("Đang xử lý ảnh...");
+    const dataUrl=await compressTimetableImage(file);
+    db.timetableImages=db.timetableImages.filter(x=>!(x.schoolId===db.activeSchoolId&&x.schoolYearId===db.activeSchoolYearId&&x.classId===db.activeClassId));
+    db.timetableImages.push({
+      id:uid(),
+      schoolId:db.activeSchoolId,
+      schoolYearId:db.activeSchoolYearId,
+      classId:db.activeClassId,
+      name:file.name||"TKB.jpg",
+      dataUrl,
+      updatedAt:new Date().toLocaleDateString("vi-VN")
+    });
+    persist();
+    toast("Đã chèn hình ảnh thời khóa biểu");
+  }catch(err){
+    toast(err.message||"Không thể tải hình ảnh");
+  }
+});
+function deleteTimetableImage(){
+  if(!currentTimetableImage())return;
+  if(!confirm("Xóa hình ảnh thời khóa biểu của lớp "+currentClass().name+"?"))return;
+  db.timetableImages=db.timetableImages.filter(x=>!(x.schoolId===db.activeSchoolId&&x.schoolYearId===db.activeSchoolYearId&&x.classId===db.activeClassId));
+  persist();
+  toast("Đã xóa hình ảnh TKB");
+}
+function openTtLightbox(){
+  const imgObj=currentTimetableImage();
+  if(!imgObj)return;
+  $("ttLightboxTitle").textContent=`TKB Lớp ${currentClass().name} · ${currentSchoolYear().label}`;
+  $("ttLightboxImg").src=imgObj.dataUrl;
+  $("ttImageLightbox").classList.remove("hidden");
+}
+function closeTtLightbox(){
+  $("ttImageLightbox").classList.add("hidden");
+  $("ttLightboxImg").src="";
+}
 
 load();
