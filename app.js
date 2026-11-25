@@ -628,32 +628,32 @@ $("confirmCopyTimetable").onclick=()=>{
 
 
 // --- HÌNH ẢNH THỜI KHÓA BIỂU ---
-let activeTtLightboxIndex=0;
-function currentTimetableImages(){
-  return db.timetableImages.filter(x=>x.schoolId===db.activeSchoolId&&x.schoolYearId===db.activeSchoolYearId&&x.classId===db.activeClassId&&x.dataUrl);
+function currentTimetableImage(){
+  return db.timetableImages.find(x=>x.schoolId===db.activeSchoolId&&x.schoolYearId===db.activeSchoolYearId&&x.classId===db.activeClassId)||null;
 }
 function renderTimetableImage(){
   const box=$("timetableImageContainer");
   if(!box)return;
-  const images=currentTimetableImages();
+  const imgObj=currentTimetableImage();
   const uploadBtn=document.querySelector(".tt-img-upload-btn");
   if(uploadBtn){
-    uploadBtn.childNodes[0].textContent=images.length?`＋ Thêm hình ảnh TKB (${images.length}) `:"＋ Thêm hình ảnh TKB ";
+    const input=$("timetableImageInput");
+    uploadBtn.childNodes[0].textContent=imgObj?"↻ Đổi hình ảnh TKB ":"＋ Thêm hình ảnh TKB ";
   }
-  if(!images.length){
-    box.innerHTML=`<div class="tt-image-empty">Chưa có ảnh thời khóa biểu cho lớp <b>${esc(currentClass().name)}</b>. Nhấn <b>＋ Thêm hình ảnh TKB</b> để tải một hoặc nhiều ảnh cùng lúc.</div>`;
+  if(!imgObj||!imgObj.dataUrl){
+    box.innerHTML=`<div class="tt-image-empty">Chưa có ảnh thời khóa biểu cho lớp <b>${esc(currentClass().name)}</b>. Nhấn <b>＋ Thêm hình ảnh TKB</b> để tải ảnh từ điện thoại hoặc máy tính.</div>`;
     return;
   }
-  box.innerHTML=images.map((imgObj,idx)=>`<div class="tt-image-box">
-    <img class="tt-image-frame" src="${imgObj.dataUrl}" alt="Ảnh thời khóa biểu ${idx+1} lớp ${esc(currentClass().name)}" onclick="openTtLightbox(${idx})">
+  box.innerHTML=`<div class="tt-image-box">
+    <img class="tt-image-frame" src="${imgObj.dataUrl}" alt="Ảnh thời khóa biểu lớp ${esc(currentClass().name)}" onclick="openTtLightbox()">
     <div class="tt-image-bar">
-      <span class="tt-image-caption">Ảnh ${idx+1}/${images.length} · ${esc(imgObj.name||"Ảnh thời khóa biểu")} · ${esc(imgObj.updatedAt||"")}</span>
+      <span class="tt-image-caption">${esc(imgObj.name||"Ảnh thời khóa biểu")} · Cập nhật ${esc(imgObj.updatedAt||"")}</span>
       <div class="tt-image-actions">
-        <button type="button" class="plain-btn" onclick="openTtLightbox(${idx})">🔍 Phóng to</button>
-        <button type="button" class="plain-btn danger-link" onclick="deleteTimetableImage('${esc(imgObj.id)}')">Xóa ảnh</button>
+        <button type="button" class="plain-btn" onclick="openTtLightbox()">🔍 Phóng to</button>
+        <button type="button" class="plain-btn danger-link" onclick="deleteTimetableImage()">Xóa ảnh</button>
       </div>
     </div>
-  </div>`).join("");
+  </div>`;
 }
 function compressTimetableImage(file){
   return new Promise((resolve,reject)=>{
@@ -663,7 +663,7 @@ function compressTimetableImage(file){
       const img=new Image();
       img.onerror=()=>reject(new Error("File không phải hình ảnh hợp lệ."));
       img.onload=()=>{
-        const maxSide=1280;
+        const maxSide=1400;
         let w=img.width,h=img.height;
         if(w>maxSide||h>maxSide){
           if(w>=h){h=Math.round(h*maxSide/w);w=maxSide;}
@@ -675,9 +675,9 @@ function compressTimetableImage(file){
         ctx.fillStyle="#ffffff";
         ctx.fillRect(0,0,w,h);
         ctx.drawImage(img,0,0,w,h);
-        let quality=0.78;
+        let quality=0.82;
         let dataUrl=canvas.toDataURL("image/jpeg",quality);
-        while(dataUrl.length>320000&&quality>0.42){
+        while(dataUrl.length>480000&&quality>0.45){
           quality-=0.1;
           dataUrl=canvas.toDataURL("image/jpeg",quality);
         }
@@ -689,58 +689,41 @@ function compressTimetableImage(file){
   });
 }
 $("timetableImageInput").addEventListener("change",async e=>{
-  const files=Array.from(e.target.files||[]).filter(f=>f.type.startsWith("image/")||/\.(jpe?g|png|webp|gif|bmp|heic)$/i.test(f.name));
+  const file=e.target.files?.[0];
   e.target.value="";
-  if(!files.length)return;
-  toast(files.length>1?`Đang xử lý ${files.length} ảnh...`:"Đang xử lý ảnh...");
-  let added=0;
-  const dateStr=new Date().toLocaleDateString("vi-VN");
-  for(const file of files){
-    try{
-      const dataUrl=await compressTimetableImage(file);
-      db.timetableImages.push({
-        id:uid(),
-        schoolId:db.activeSchoolId,
-        schoolYearId:db.activeSchoolYearId,
-        classId:db.activeClassId,
-        name:file.name||`TKB_${added+1}.jpg`,
-        dataUrl,
-        updatedAt:dateStr
-      });
-      added++;
-    }catch(err){}
-  }
-  if(added){
+  if(!file)return;
+  try{
+    toast("Đang xử lý ảnh...");
+    const dataUrl=await compressTimetableImage(file);
+    db.timetableImages=db.timetableImages.filter(x=>!(x.schoolId===db.activeSchoolId&&x.schoolYearId===db.activeSchoolYearId&&x.classId===db.activeClassId));
+    db.timetableImages.push({
+      id:uid(),
+      schoolId:db.activeSchoolId,
+      schoolYearId:db.activeSchoolYearId,
+      classId:db.activeClassId,
+      name:file.name||"TKB.jpg",
+      dataUrl,
+      updatedAt:new Date().toLocaleDateString("vi-VN")
+    });
     persist();
-    toast(added>1?`Đã chèn ${added} hình ảnh thời khóa biểu`:"Đã chèn hình ảnh thời khóa biểu");
-  }else{
-    toast("Không thể tải hình ảnh đã chọn");
+    toast("Đã chèn hình ảnh thời khóa biểu");
+  }catch(err){
+    toast(err.message||"Không thể tải hình ảnh");
   }
 });
-function deleteTimetableImage(id){
-  const imgObj=db.timetableImages.find(x=>x.id===id);
-  if(!imgObj)return;
-  if(!confirm(`Xóa hình ảnh "${imgObj.name||"Thời khóa biểu"}"?`))return;
-  db.timetableImages=db.timetableImages.filter(x=>x.id!==id);
+function deleteTimetableImage(){
+  if(!currentTimetableImage())return;
+  if(!confirm("Xóa hình ảnh thời khóa biểu của lớp "+currentClass().name+"?"))return;
+  db.timetableImages=db.timetableImages.filter(x=>!(x.schoolId===db.activeSchoolId&&x.schoolYearId===db.activeSchoolYearId&&x.classId===db.activeClassId));
   persist();
   toast("Đã xóa hình ảnh TKB");
 }
-function openTtLightbox(index=0){
-  const images=currentTimetableImages();
-  if(!images.length)return;
-  activeTtLightboxIndex=Math.max(0,Math.min(index,images.length-1));
-  const imgObj=images[activeTtLightboxIndex];
-  $("ttLightboxTitle").textContent=`Ảnh ${activeTtLightboxIndex+1}/${images.length} · Lớp ${currentClass().name} (${currentSchoolYear().label})`;
+function openTtLightbox(){
+  const imgObj=currentTimetableImage();
+  if(!imgObj)return;
+  $("ttLightboxTitle").textContent=`TKB Lớp ${currentClass().name} · ${currentSchoolYear().label}`;
   $("ttLightboxImg").src=imgObj.dataUrl;
-  const prevBtn=$("ttLightboxPrev"),nextBtn=$("ttLightboxNext");
-  if(prevBtn){prevBtn.style.display=images.length>1?"grid":"none";prevBtn.disabled=activeTtLightboxIndex===0;}
-  if(nextBtn){nextBtn.style.display=images.length>1?"grid":"none";nextBtn.disabled=activeTtLightboxIndex===images.length-1;}
   $("ttImageLightbox").classList.remove("hidden");
-}
-function stepTtLightbox(delta){
-  const images=currentTimetableImages();
-  if(images.length<=1)return;
-  openTtLightbox(activeTtLightboxIndex+delta);
 }
 function closeTtLightbox(){
   $("ttImageLightbox").classList.add("hidden");

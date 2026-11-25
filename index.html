@@ -159,7 +159,7 @@
       </div>
       <label class="add-student-short tt-img-upload-btn" for="timetableImageInput">
         ＋ Thêm hình ảnh TKB
-        <input id="timetableImageInput" type="file" accept="image/*" multiple hidden>
+        <input id="timetableImageInput" type="file" accept="image/*" hidden>
       </label>
     </div>
     <div id="timetableImageContainer" class="tt-image-container"></div>
@@ -170,11 +170,7 @@
   <div class="tt-lightbox-card">
     <div class="tt-lightbox-head">
       <b id="ttLightboxTitle">Ảnh thời khóa biểu</b>
-      <div class="tt-lightbox-nav">
-        <button type="button" id="ttLightboxPrev" onclick="stepTtLightbox(-1)" aria-label="Ảnh trước">‹</button>
-        <button type="button" id="ttLightboxNext" onclick="stepTtLightbox(1)" aria-label="Ảnh tiếp theo">›</button>
-        <button type="button" onclick="closeTtLightbox()" aria-label="Đóng">×</button>
-      </div>
+      <button type="button" onclick="closeTtLightbox()">×</button>
     </div>
     <div class="tt-lightbox-body">
       <img id="ttLightboxImg" src="" alt="Ảnh thời khóa biểu phóng to">

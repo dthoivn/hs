@@ -197,7 +197,7 @@ body:has(.modal:not(.hidden)){overflow:hidden}
 .timetable-image-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 .timetable-image-head b{display:block;font-size:15px;color:var(--ink);margin-top:3px}
 .tt-img-upload-btn{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;height:40px;padding:0 12px;font-size:12px}
-.tt-image-container{margin-top:6px;display:grid;gap:12px}
+.tt-image-container{margin-top:6px}
 .tt-image-empty{padding:14px 12px;text-align:center;font-size:12px;color:var(--muted);background:#f7f9fc;border:1px dashed #d5dce8;border-radius:10px}
 .tt-image-box{border:1px solid #d5dce8;border-radius:11px;overflow:hidden;background:#fafbfd}
 .tt-image-frame{display:block;width:100%;max-height:460px;object-fit:contain;background:#f1f4f9;cursor:zoom-in}
@@ -207,10 +207,8 @@ body:has(.modal:not(.hidden)){overflow:hidden}
 .tt-image-actions .plain-btn{padding:5px 8px;font-size:11px}
 
 .tt-lightbox-card{width:min(100%,860px);max-height:92vh;background:#10192b;color:#fff;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px #00000080}
-.tt-lightbox-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;background:#17243d;border-bottom:1px solid #263654}
-.tt-lightbox-head b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tt-lightbox-nav{display:flex;align-items:center;gap:6px;flex:none}
-.tt-lightbox-head button{border:0;background:#ffffff1a;color:#fff;width:30px;height:30px;border-radius:50%;font-size:20px;cursor:pointer;display:grid;place-items:center}
-.tt-lightbox-head button:disabled{opacity:.35;cursor:default}
+.tt-lightbox-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:#17243d;border-bottom:1px solid #263654}
+.tt-lightbox-head b{font-size:13px}
+.tt-lightbox-head button{border:0;background:#ffffff1a;color:#fff;width:30px;height:30px;border-radius:50%;font-size:20px;cursor:pointer}
 .tt-lightbox-body{overflow:auto;padding:10px;display:grid;place-items:center;background:#0b1220;-webkit-overflow-scrolling:touch}
 .tt-lightbox-body img{max-width:100%;max-height:calc(92vh - 64px);object-fit:contain;border-radius:6px}
