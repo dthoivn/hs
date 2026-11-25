@@ -1,6 +1,6 @@
 const KEY="smartclass_quick_teacher_v1";
-let db={schoolName:"",schoolYear:"2026-2027",schools:[],activeSchoolId:"",activeSchoolYearId:"",classes:[{id:"class_default",name:"Lớp học của tôi"}],activeClassId:"class_default",students:[],grades:[],behaviors:[]};
-let selectedType="Khen",selectedScore=null,editingStudentId=null;
+let db={schoolName:"",schoolYear:"2026-2027",schools:[],activeSchoolId:"",activeSchoolYearId:"",classes:[{id:"class_default",name:"Lớp học của tôi"}],activeClassId:"class_default",students:[],grades:[],behaviors:[],timetables:[]};
+let selectedType="Khen",selectedScore=null,editingStudentId=null,editingTimetableId=null,selectedTimetableDay="all";
 const $=id=>document.getElementById(id),today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")},uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function ensureSchema(){
@@ -36,6 +36,16 @@ function ensureSchema(){
   });
   db.grades=Array.isArray(db.grades)?db.grades:[];
   db.behaviors=Array.isArray(db.behaviors)?db.behaviors:[];
+  db.timetables=Array.isArray(db.timetables)?db.timetables:[];
+  db.timetables.forEach(t=>{
+    if(!t.id)t.id=uid();
+    if(!t.schoolId)t.schoolId=db.activeSchoolId;
+    if(!t.schoolYearId)t.schoolYearId=db.activeSchoolYearId;
+    if(!t.classId)t.classId=db.classes[0].id;
+    t.day=Number(t.day)||2;
+    t.session=t.session==="Chiều"?"Chiều":"Sáng";
+    t.period=Number(t.period)||1;
+  });
 }
 function currentSchool(){return db.schools.find(s=>s.id===db.activeSchoolId)||db.schools[0]}
 function currentSchoolYear(){return currentSchool().years.find(y=>y.id===db.activeSchoolYearId)||currentSchool().years[0]}
@@ -70,7 +80,7 @@ function fillSelects(){
   $("classFilter").value=db.activeClassId;
   $("classLabel").textContent=[db.schoolName,currentClass().name,db.schoolYear].filter(Boolean).join(" · ");
 }
-function renderAll(){fillSelects();renderStudents();renderBehaviorFeed();renderGradeFeed();renderClassList();renderStats();renderRanking();renderProgress();$("behaviorTodayCount").textContent=db.behaviors.filter(x=>x.date===today()&&classStudents().some(s=>s.id===x.studentId)).length+" hôm nay";$("gradeTodayCount").textContent=db.grades.filter(x=>x.date===today()&&schoolStudents().some(s=>s.id===x.studentId)).length+" điểm hôm nay"}
+function renderAll(){fillSelects();renderStudents();renderBehaviorFeed();renderGradeFeed();renderClassList();renderStats();renderRanking();renderProgress();renderTimetable();$("behaviorTodayCount").textContent=db.behaviors.filter(x=>x.date===today()&&classStudents().some(s=>s.id===x.studentId)).length+" hôm nay";$("gradeTodayCount").textContent=db.grades.filter(x=>x.date===today()&&schoolStudents().some(s=>s.id===x.studentId)).length+" điểm hôm nay"}
 
 function parseISODate(value){if(!value)return null;const p=value.split("-").map(Number);if(p.length!==3||!p.every(Number.isFinite))return null;return new Date(p[0],p[1]-1,p[2])}
 function isoLocal(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")}
@@ -406,8 +416,211 @@ function closeClass(){$("classModal").classList.add("hidden")}
 $("closeClassModal").onclick=closeClass;
 $("addClass").onclick=()=>{let name=$("classNameInput").value.trim();if(!name)return toast("Nhập tên lớp");if(db.classes.some(c=>c.name.toLowerCase()===name.toLowerCase()))return toast("Tên lớp đã tồn tại");let c={id:uid(),name};db.classes.push(c);db.activeClassId=c.id;$("classNameInput").value="";persist();toast("Đã tạo lớp "+name)};
 function renameClass(id){let c=db.classes.find(x=>x.id===id);if(!c)return;let name=prompt("Tên lớp mới:",c.name);if(!name||!name.trim())return;if(db.classes.some(x=>x.id!==id&&x.name.toLowerCase()===name.trim().toLowerCase()))return toast("Tên lớp đã tồn tại");c.name=name.trim();persist();toast("Đã đổi tên lớp")}
-function deleteClass(id){let c=db.classes.find(x=>x.id===id);if(!c)return;if(db.students.some(s=>s.classId===id))return alert("Lớp vẫn còn học sinh. Hãy chuyển học sinh sang lớp khác trước.");if(db.classes.length===1)return alert("Phải giữ lại ít nhất một lớp.");if(!confirm("Xóa lớp "+c.name+"?"))return;db.classes=db.classes.filter(x=>x.id!==id);if(db.activeClassId===id)db.activeClassId=db.classes[0].id;persist()}
+function deleteClass(id){let c=db.classes.find(x=>x.id===id);if(!c)return;if(db.students.some(s=>s.classId===id))return alert("Lớp vẫn còn học sinh. Hãy chuyển học sinh sang lớp khác trước.");if(db.classes.length===1)return alert("Phải giữ lại ít nhất một lớp.");if(!confirm("Xóa lớp "+c.name+"?"))return;db.classes=db.classes.filter(x=>x.id!==id);db.timetables=db.timetables.filter(t=>t.classId!==id);if(db.activeClassId===id)db.activeClassId=db.classes[0].id;persist()}
 function exportTxt(){let p={app:"Smart Class Quick",version:3,exportedAt:new Date().toISOString(),data:db};let blob=new Blob(["SMART CLASS QUICK BACKUP\\n"+JSON.stringify(p,null,2)],{type:"text/plain;charset=utf-8"});let url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="SmartClass_"+today()+".txt";a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);toast("Đã xuất file TXT")}
 $("exportBtn").onclick=exportTxt;
 $("importFile").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let p=JSON.parse(String(r.result).replace(/^SMART CLASS QUICK BACKUP\\s*/,""));let d=p.data||p;if(!Array.isArray(d.students)||!Array.isArray(d.grades)||!Array.isArray(d.behaviors))throw 0;if(!confirm("Nhập file sẽ thay thế dữ liệu hiện tại. Tiếp tục?"))return;db={...d,classes:d.classes,activeClassId:d.activeClassId};ensureSchema();persist();toast("Đã khôi phục dữ liệu")}catch(e){alert("File TXT không đúng định dạng Smart Class Quick.")}e.target.value=""};r.readAsText(f,"UTF-8")};
+
+// --- THỜI KHÓA BIỂU THEO LỚP, TRƯỜNG, NĂM HỌC ---
+const DAY_NAMES={2:"Thứ 2",3:"Thứ 3",4:"Thứ 4",5:"Thứ 5",6:"Thứ 6",7:"Thứ 7"};
+function todayDayNum(){const d=new Date().getDay();return d===0?8:d+1}
+function classTimetableSlots(){
+  return db.timetables.filter(t=>t.schoolId===db.activeSchoolId&&t.schoolYearId===db.activeSchoolYearId&&t.classId===db.activeClassId);
+}
+function renderTimetable(){
+  const container=$("timetableClassicContainer");
+  if(!container)return;
+  const school=currentSchool(),year=currentSchoolYear(),cls=currentClass();
+  const unitLabel=`${cls.name} · ${year.label}`;
+  const fullLabel=`${school.name} · Lớp ${cls.name} (${year.label})`;
+  if($("timetableUnitBadge"))$("timetableUnitBadge").textContent=unitLabel;
+  if($("timetableContextTitle"))$("timetableContextTitle").textContent=fullLabel;
+
+  const todayNum=todayDayNum();
+  document.querySelectorAll("#timetableDayPills .day-pill").forEach(btn=>{
+    const d=btn.dataset.day;
+    btn.classList.toggle("active",d===String(selectedTimetableDay));
+    btn.classList.toggle("is-today",Number(d)===todayNum);
+  });
+
+  const allSlots=classTimetableSlots();
+  const daysToShow=selectedTimetableDay==="all"?[2,3,4,5,6,7]:[Number(selectedTimetableDay)];
+
+  if(!allSlots.length&&selectedTimetableDay==="all"){
+    container.innerHTML=`<div class="tt-empty-state">
+      <b>Chưa có thời khóa biểu cho lớp ${esc(cls.name)}</b>
+      <p>Thiết lập thời khóa biểu riêng cho <b>${esc(school.name)}</b> – năm học <b>${esc(year.label)}</b> để tra cứu nhanh ngay trên điện thoại.</p>
+      <button type="button" class="submit-btn" onclick="openTimetableModal()">＋ TẠO TIẾT HỌC ĐẦU TIÊN</button>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML=daysToShow.map(day=>{
+    const isToday=day===todayNum;
+    const daySlots=allSlots.filter(t=>Number(t.day)===day);
+    const sessions=["Sáng","Chiều"].map(sess=>{
+      const rows=daySlots.filter(t=>(t.session||"Sáng")===sess).sort((a,b)=>Number(a.period)-Number(b.period));
+      if(!rows.length)return "";
+      const trs=rows.map(item=>{
+        const meta=[];
+        if(item.teacher)meta.push(`<span>GV: ${esc(item.teacher)}</span>`);
+        if(item.room)meta.push(`<span>Phòng: ${esc(item.room)}</span>`);
+        if(item.note)meta.push(`<span>${esc(item.note)}</span>`);
+        return `<tr class="tt-row" onclick="openTimetableModal('${esc(item.id)}')">
+          <td class="tt-col-period">
+            <span class="tt-period-num">Tiết ${esc(item.period)}</span>
+            ${item.time?`<span class="tt-period-time">${esc(item.time)}</span>`:""}
+          </td>
+          <td class="tt-col-main">
+            <span class="tt-subject">${esc(item.subject)}</span>
+            ${meta.length?`<div class="tt-meta">${meta.join(" · ")}</div>`:""}
+          </td>
+          <td class="tt-col-action" aria-label="Chỉnh sửa">✎</td>
+        </tr>`;
+      }).join("");
+      return `<div class="tt-session-group">
+        <div class="tt-session-label">Buổi ${sess}</div>
+        <table class="tt-table"><tbody>${trs}</tbody></table>
+      </div>`;
+    }).join("");
+
+    return `<article class="tt-day-card${isToday?" is-today":""}">
+      <div class="tt-day-header">
+        <div class="tt-day-title">
+          <b>${DAY_NAMES[day]}</b>
+          ${isToday?'<span class="tt-today-tag">Hôm nay</span>':""}
+        </div>
+        <button type="button" class="tt-day-add" onclick="openTimetableModal(null, ${day})">＋ Thêm tiết</button>
+      </div>
+      ${sessions||`<div class="tt-empty-day">Chưa có tiết học nào trong ${DAY_NAMES[day]}.</div>`}
+    </article>`;
+  }).join("");
+}
+
+function openTimetableModal(id=null,defaultDay=null){
+  editingTimetableId=id;
+  const item=id?db.timetables.find(t=>t.id===id):null;
+  $("timetableModalTitle").textContent=item?"Chỉnh sửa tiết học":"Thêm tiết học";
+  $("ttDay").value=String(item?item.day:(defaultDay||(selectedTimetableDay!=="all"?selectedTimetableDay:(todayDayNum()<=7?todayDayNum():2))));
+  $("ttSession").value=item?.session||"Sáng";
+  if(item){
+    $("ttPeriod").value=String(item.period||1);
+  }else{
+    const d=Number($("ttDay").value),sess=$("ttSession").value;
+    const used=classTimetableSlots().filter(t=>Number(t.day)===d&&(t.session||"Sáng")===sess).map(t=>Number(t.period));
+    const nextPeriod=[1,2,3,4,5].find(p=>!used.includes(p))||1;
+    $("ttPeriod").value=String(nextPeriod);
+  }
+  $("ttTime").value=item?.time||"";
+  $("ttSubject").value=item?.subject||"";
+  $("ttTeacher").value=item?.teacher||"";
+  $("ttRoom").value=item?.room||"";
+  $("ttNote").value=item?.note||"";
+  $("deleteTimetableSlot").classList.toggle("hidden",!item);
+  $("timetableModal").classList.remove("hidden");
+  setTimeout(()=>$("ttSubject").focus(),60);
+}
+function closeTimetableModal(){
+  $("timetableModal").classList.add("hidden");
+  editingTimetableId=null;
+}
+$("openAddTimetable").onclick=()=>openTimetableModal();
+$("closeTimetableModal").onclick=$("cancelTimetable").onclick=closeTimetableModal;
+$("timetableDayPills").addEventListener("click",e=>{
+  const btn=e.target.closest("[data-day]");
+  if(!btn)return;
+  selectedTimetableDay=btn.dataset.day;
+  renderTimetable();
+});
+$("saveTimetable").onclick=()=>{
+  const subject=$("ttSubject").value.trim();
+  if(!subject)return toast("Nhập tên môn học hoặc hoạt động");
+  const day=Number($("ttDay").value)||2;
+  const session=$("ttSession").value==="Chiều"?"Chiều":"Sáng";
+  const period=Number($("ttPeriod").value)||1;
+  const time=$("ttTime").value.trim();
+  const teacher=$("ttTeacher").value.trim();
+  const room=$("ttRoom").value.trim();
+  const note=$("ttNote").value.trim();
+
+  const duplicate=classTimetableSlots().find(t=>t.id!==editingTimetableId&&Number(t.day)===day&&(t.session||"Sáng")===session&&Number(t.period)===period);
+  if(duplicate){
+    if(!confirm(`${DAY_NAMES[day]} (${session} - Tiết ${period}) đã có môn "${duplicate.subject}". Bạn muốn ghi đè bằng "${subject}" không?`))return;
+    db.timetables=db.timetables.filter(t=>t.id!==duplicate.id);
+  }
+
+  if(editingTimetableId){
+    const existing=db.timetables.find(t=>t.id===editingTimetableId);
+    if(existing){
+      Object.assign(existing,{day,session,period,time,subject,teacher,room,note});
+    }
+    toast("Đã cập nhật tiết học");
+  }else{
+    db.timetables.push({
+      id:uid(),
+      schoolId:db.activeSchoolId,
+      schoolYearId:db.activeSchoolYearId,
+      classId:db.activeClassId,
+      day,session,period,time,subject,teacher,room,note
+    });
+    toast("Đã thêm tiết học");
+  }
+  closeTimetableModal();
+  persist();
+};
+$("deleteTimetableSlot").onclick=()=>{
+  if(!editingTimetableId)return;
+  const item=db.timetables.find(t=>t.id===editingTimetableId);
+  if(!item)return closeTimetableModal();
+  if(!confirm(`Xóa tiết "${item.subject}" (${DAY_NAMES[item.day]} - ${item.session} tiết ${item.period})?`))return;
+  db.timetables=db.timetables.filter(t=>t.id!==editingTimetableId);
+  closeTimetableModal();
+  persist();
+  toast("Đã xóa tiết học");
+};
+$("clearTimetableBtn").onclick=()=>{
+  const slots=classTimetableSlots();
+  if(!slots.length)return toast("Lớp này chưa có thời khóa biểu");
+  if(!confirm(`Xóa toàn bộ ${slots.length} tiết học của lớp ${currentClass().name} (${currentSchoolYear().label})?`))return;
+  db.timetables=db.timetables.filter(t=>!(t.schoolId===db.activeSchoolId&&t.schoolYearId===db.activeSchoolYearId&&t.classId===db.activeClassId));
+  persist();
+  toast("Đã xóa thời khóa biểu lớp "+currentClass().name);
+};
+$("copyTimetableBtn").onclick=()=>{
+  const groups=new Map();
+  db.timetables.forEach(t=>{
+    if(t.schoolId===db.activeSchoolId&&t.schoolYearId===db.activeSchoolYearId&&t.classId===db.activeClassId)return;
+    const key=`${t.schoolId}|${t.schoolYearId}|${t.classId}`;
+    if(!groups.has(key)){
+      const sch=db.schools.find(s=>s.id===t.schoolId)?.name||"Trường";
+      const yr=db.schools.find(s=>s.id===t.schoolId)?.years.find(y=>y.id===t.schoolYearId)?.label||"";
+      const cl=db.classes.find(c=>c.id===t.classId)?.name||"Lớp";
+      groups.set(key,{key,label:`Lớp ${cl} · ${sch} (${yr})`,count:0});
+    }
+    groups.get(key).count++;
+  });
+  const list=[...groups.values()];
+  if(!list.length)return toast("Chưa có thời khóa biểu ở lớp/năm học khác để sao chép");
+  $("copyTargetLabel").textContent=`Lớp ${currentClass().name} (${currentSchoolYear().label})`;
+  $("copySourceSelect").innerHTML=list.map(g=>`<option value="${esc(g.key)}">${esc(g.label)} (${g.count} tiết)</option>`).join("");
+  $("copyTimetableModal").classList.remove("hidden");
+};
+$("closeCopyTimetableModal").onclick=$("cancelCopyTimetable").onclick=()=>$("copyTimetableModal").classList.add("hidden");
+$("confirmCopyTimetable").onclick=()=>{
+  const val=$("copySourceSelect").value;
+  if(!val)return;
+  const [srcSchoolId,srcYearId,srcClassId]=val.split("|");
+  const sourceSlots=db.timetables.filter(t=>t.schoolId===srcSchoolId&&t.schoolYearId===srcYearId&&t.classId===srcClassId);
+  if(!sourceSlots.length)return toast("Nguồn không có dữ liệu");
+  const currentCount=classTimetableSlots().length;
+  if(currentCount&&!confirm(`Lớp ${currentClass().name} đang có ${currentCount} tiết. Sao chép sẽ thay thế toàn bộ thời khóa biểu hiện tại. Tiếp tục?`))return;
+  db.timetables=db.timetables.filter(t=>!(t.schoolId===db.activeSchoolId&&t.schoolYearId===db.activeSchoolYearId&&t.classId===db.activeClassId));
+  sourceSlots.forEach(t=>{
+    db.timetables.push({...t,id:uid(),schoolId:db.activeSchoolId,schoolYearId:db.activeSchoolYearId,classId:db.activeClassId});
+  });
+  $("copyTimetableModal").classList.add("hidden");
+  persist();
+  toast(`Đã sao chép ${sourceSlots.length} tiết học`);
+};
+
 load();
